@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -24,40 +24,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22.16.0
-          package-manager-cache: false
-
-      - name: Ensure lockfile exists
-        id: lockfile
-        shell: bash
-        run: |
-          if [[ -f package-lock.json ]]; then
-            echo "created=false" >> "$GITHUB_OUTPUT"
-          else
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-            echo "created=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Commit generated lockfile
-        if: ${{ github.event_name == 'push' && steps.lockfile.outputs.created == 'true' }}
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore: add generated package lock"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
       - name: Verify source
         run: npm run check
-
-      - name: Upload lockfile
-        if: ${{ always() && hashFiles('package-lock.json') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 3

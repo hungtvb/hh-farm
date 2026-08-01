@@ -110,9 +110,9 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
     canvas,
     'data-scene-instance',
   );
-  await page.keyboard.down('r');
+  await page.keyboard.down('KeyR');
   await page.waitForTimeout(100);
-  await page.keyboard.up('r');
+  await page.keyboard.up('KeyR');
 
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-scene-instance'))

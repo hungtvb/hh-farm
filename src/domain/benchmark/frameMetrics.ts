@@ -29,9 +29,10 @@ function percentile(sortedValues: readonly number[], ratio: number): number {
 export function summarizeFrameTimes(
   frameTimesMs: readonly number[],
 ): FrameMetrics {
-  const validSamples = frameTimesMs
-    .filter((frameTime) => Number.isFinite(frameTime) && frameTime > 0)
-    .toSorted((left, right) => left - right);
+  const validSamples = frameTimesMs.filter(
+    (frameTime) => Number.isFinite(frameTime) && frameTime > 0,
+  );
+  validSamples.sort((left, right) => left - right);
 
   if (validSamples.length === 0) {
     return {

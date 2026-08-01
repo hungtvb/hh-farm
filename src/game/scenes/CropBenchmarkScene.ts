@@ -41,12 +41,7 @@ export class CropBenchmarkScene extends Phaser.Scene {
     const { canvas } = this.game;
 
     createCropBenchmarkTextures(this);
-    this.crops = new CropBenchmarkController(
-      this,
-      strategy,
-      map.widthInPixels,
-      map.heightInPixels,
-    );
+    this.crops = new CropBenchmarkController(this, strategy);
 
     const camera = this.cameras.main;
     camera.stopFollow();

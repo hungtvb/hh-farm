@@ -149,10 +149,12 @@ export class PlayerController {
       this.keyboard.removeKey(key);
     }
 
+    activeControllerCount -= 1;
+    this.scene.game.canvas.dataset.activePlayerControllers = String(
+      activeControllerCount,
+    );
     this.shadow.destroy();
     this.sprite.destroy();
-    activeControllerCount -= 1;
-    this.writeDebugState();
   }
 
   private writeDebugState(): void {

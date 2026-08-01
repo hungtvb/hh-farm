@@ -48,8 +48,45 @@ async function openFarm(page: Page): Promise<Locator> {
   );
   await expect(canvas).toHaveAttribute('data-collision-count', '3');
   await expect(canvas).toHaveAttribute('data-active-player-controllers', '1');
+  await expect(canvas).toHaveAttribute('data-dynamic-body-count', '1');
+  await expect(canvas).toHaveAttribute('data-static-body-count', '3');
 
   return canvas;
+}
+
+async function restartFarm(page: Page, canvas: Locator): Promise<void> {
+  const previousRestartRequestCount = await readNumberAttribute(
+    canvas,
+    'data-restart-request-count',
+  );
+  const previousSceneShutdownCount = await readNumberAttribute(
+    canvas,
+    'data-scene-shutdown-count',
+  );
+  const previousSceneInstance = await readNumberAttribute(
+    canvas,
+    'data-scene-instance',
+  );
+
+  await page.keyboard.down('KeyR');
+  await page.waitForTimeout(50);
+  await page.keyboard.up('KeyR');
+
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-restart-request-count'))
+    .toBe(previousRestartRequestCount + 1);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-scene-shutdown-count'))
+    .toBe(previousSceneShutdownCount + 1);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-scene-instance'))
+    .toBe(previousSceneInstance + 1);
+  await expect(canvas).toHaveAttribute('data-active-player-controllers', '1');
+  await expect(canvas).toHaveAttribute('data-dynamic-body-count', '1');
+  await expect(canvas).toHaveAttribute('data-static-body-count', '3');
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
+    .toBeCloseTo(480, 0);
 }
 
 test('boots the player prototype without browser errors', async ({ page }) => {
@@ -79,7 +116,11 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   const startCameraX = await readNumberAttribute(canvas, 'data-camera-x');
 
   await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(700);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
+      timeout: 2_000,
+    })
+    .toBeGreaterThan(startX + 60);
   await page.keyboard.up('ArrowRight');
 
   await expect(canvas).toHaveAttribute('data-player-facing', 'right');
@@ -87,37 +128,25 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
 
   const movedX = await readNumberAttribute(canvas, 'data-player-x');
   const movedCameraX = await readNumberAttribute(canvas, 'data-camera-x');
-  expect(movedX).toBeGreaterThan(startX + 60);
   expect(movedCameraX).toBeGreaterThan(startCameraX + 40);
 
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(200);
   const settledX = await readNumberAttribute(canvas, 'data-player-x');
   const settledCameraX = await readNumberAttribute(canvas, 'data-camera-x');
   expect(Math.abs(settledX - movedX)).toBeLessThan(0.5);
   expect(Math.abs(settledCameraX - movedCameraX)).toBeLessThan(0.5);
 
   await page.keyboard.down('ArrowLeft');
-  await page.waitForTimeout(4_500);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
+      timeout: 6_000,
+    })
+    .toBeLessThanOrEqual(44);
   await page.keyboard.up('ArrowLeft');
-  await page.waitForTimeout(100);
 
+  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
   const westCollisionX = await readNumberAttribute(canvas, 'data-player-x');
   expect(westCollisionX).toBeGreaterThanOrEqual(40);
-  expect(westCollisionX).toBeLessThanOrEqual(44);
-  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
-
-  const previousRestartRequestCount = await readNumberAttribute(
-    canvas,
-    'data-restart-request-count',
-  );
-  const previousSceneShutdownCount = await readNumberAttribute(
-    canvas,
-    'data-scene-shutdown-count',
-  );
-  const previousSceneInstance = await readNumberAttribute(
-    canvas,
-    'data-scene-instance',
-  );
 
   await page.evaluate(() => {
     const farmCanvas = document.querySelector<HTMLCanvasElement>('canvas');
@@ -132,24 +161,10 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
       { once: true },
     );
   });
-  await page.keyboard.down('KeyR');
-  await page.waitForTimeout(100);
-  await page.keyboard.up('KeyR');
 
+  await restartFarm(page, canvas);
   await expect(canvas).toHaveAttribute('data-last-key-down', 'KeyR');
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-restart-request-count'))
-    .toBeGreaterThan(previousRestartRequestCount);
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-scene-shutdown-count'))
-    .toBeGreaterThan(previousSceneShutdownCount);
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-scene-instance'))
-    .toBeGreaterThan(previousSceneInstance);
-  await expect(canvas).toHaveAttribute('data-active-player-controllers', '1');
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
-    .toBeCloseTo(480, 0);
+  await restartFarm(page, canvas);
 
   expect(runtimeErrors).toEqual([]);
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('boots FarmScene without browser errors', async ({ page }) => {
+test('loads the validated Tiled farm map without browser errors', async ({ page }) => {
   const runtimeErrors: string[] = [];
 
   page.on('pageerror', (error) => {
@@ -15,8 +15,15 @@ test('boots FarmScene without browser errors', async ({ page }) => {
 
   await page.goto('/');
 
-  const farmCanvas = page.locator('canvas[data-scene="farm"]');
+  const farmCanvas = page.locator(
+    'canvas[data-scene="farm"][data-map="farm-test"]',
+  );
   await expect(farmCanvas).toBeVisible({ timeout: 10_000 });
+  await expect(farmCanvas).toHaveAttribute(
+    'data-player-spawn',
+    'spawn.player.default',
+  );
+  await expect(farmCanvas).toHaveAttribute('data-collision-count', '3');
 
   const canvasBox = await farmCanvas.boundingBox();
   expect(canvasBox).not.toBeNull();
@@ -25,7 +32,7 @@ test('boots FarmScene without browser errors', async ({ page }) => {
   expect(runtimeErrors).toEqual([]);
 
   await page.screenshot({
-    path: 'test-results/farm-boot.png',
+    path: 'test-results/farm-map.png',
     fullPage: true,
   });
 });

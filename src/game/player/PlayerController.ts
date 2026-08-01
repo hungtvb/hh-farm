@@ -162,6 +162,10 @@ export class PlayerController {
     const { main: camera } = this.scene.cameras;
     const body = this.sprite.body;
 
+    if (body === null) {
+      throw new Error('Player sprite is missing its Arcade Physics body.');
+    }
+
     canvas.dataset.sceneInstance = String(this.sceneInstance);
     canvas.dataset.activePlayerControllers = String(activeControllerCount);
     canvas.dataset.playerX = this.sprite.x.toFixed(2);

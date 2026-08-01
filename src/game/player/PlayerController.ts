@@ -15,6 +15,7 @@ const PLAYER_BODY_OFFSET_X = 7;
 const PLAYER_BODY_OFFSET_Y = 35;
 
 let activeControllerCount = 0;
+let restartRequestCount = 0;
 
 export type PlayerControllerOptions = Readonly<{
   sceneInstance: number;
@@ -46,6 +47,10 @@ export class PlayerController {
       return;
     }
 
+    restartRequestCount += 1;
+    this.scene.game.canvas.dataset.restartRequestCount = String(
+      restartRequestCount,
+    );
     this.scene.scene.restart();
   };
 
@@ -173,6 +178,7 @@ export class PlayerController {
 
     canvas.dataset.sceneInstance = String(this.sceneInstance);
     canvas.dataset.activePlayerControllers = String(activeControllerCount);
+    canvas.dataset.restartRequestCount = String(restartRequestCount);
     canvas.dataset.playerX = this.sprite.x.toFixed(2);
     canvas.dataset.playerY = this.sprite.y.toFixed(2);
     canvas.dataset.playerVelocityX = body.velocity.x.toFixed(2);

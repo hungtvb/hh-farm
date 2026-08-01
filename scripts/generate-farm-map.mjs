@@ -6,6 +6,10 @@ const tileWidth = 32;
 const tileHeight = 32;
 const tileCount = width * height;
 
+/**
+ * @param {(column: number, row: number) => number} resolveTile
+ * @returns {number[]}
+ */
 function createTileData(resolveTile) {
   return Array.from({ length: tileCount }, (_, index) => {
     const column = index % width;

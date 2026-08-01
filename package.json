@@ -15,6 +15,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test:run && npm run build"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "@playwright/test": "1.61.0",
     "@types/node": "26.1.1",
     "eslint": "9.39.5",
     "globals": "17.7.0",

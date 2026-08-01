@@ -40,7 +40,7 @@ The domain layer is intentionally isolated from Phaser so farming rules, invento
 
 GitHub Actions runs `npm ci` followed by `npm run check` on the feature branch and pull requests targeting `main`.
 
-The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by the dedicated performance milestone after the core technical spike.
+The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224` after the core technical spike.
 
 ## Project links
 

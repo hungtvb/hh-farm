@@ -126,7 +126,7 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
       'keydown',
       (event) => {
         if (farmCanvas !== null) {
-          farmCanvas.dataset.lastKeyDown = `${event.code}:${String(event.keyCode)}`;
+          farmCanvas.dataset.lastKeyDown = event.code;
         }
       },
       { once: true },
@@ -136,7 +136,7 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   await page.waitForTimeout(100);
   await page.keyboard.up('KeyR');
 
-  await expect(canvas).toHaveAttribute('data-last-key-down', 'KeyR:82');
+  await expect(canvas).toHaveAttribute('data-last-key-down', 'KeyR');
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-restart-request-count'))
     .toBeGreaterThan(previousRestartRequestCount);

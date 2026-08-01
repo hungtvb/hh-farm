@@ -41,6 +41,14 @@ export class PlayerController {
   private walkFrame: 'walk-a' | 'walk-b' = 'walk-a';
   private destroyed = false;
 
+  private readonly handleRestart = (): void => {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.scene.scene.restart();
+  };
+
   public constructor(scene: Phaser.Scene, options: PlayerControllerOptions) {
     this.scene = scene;
     this.sceneInstance = options.sceneInstance;
@@ -56,6 +64,7 @@ export class PlayerController {
     this.sKey = this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
     this.dKey = this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.restartKey = this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.restartKey.on('down', this.handleRestart);
 
     this.shadow = scene.add
       .ellipse(options.spawnX, options.spawnY - 3, 24, 10, 0x355f36, 0.22)
@@ -81,11 +90,6 @@ export class PlayerController {
 
   public update(deltaMs: number): void {
     if (this.destroyed) {
-      return;
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-      this.scene.scene.restart();
       return;
     }
 
@@ -134,6 +138,7 @@ export class PlayerController {
     this.destroyed = true;
     this.sprite.setVelocity(0, 0);
     this.scene.cameras.main.stopFollow();
+    this.restartKey.off('down', this.handleRestart);
 
     for (const key of [
       this.cursors.left,

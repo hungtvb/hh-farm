@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractFarmMapMetadata,
   FarmMapContractError,
+  type TiledFarmMap,
   validateFarmMapContract,
 } from '../../src/data/maps/farmMapContract';
 
@@ -59,6 +60,19 @@ function findProperty(
   return requireRecord(property, `property "${propertyName}"`);
 }
 
+function requireTileData(
+  map: TiledFarmMap,
+  layerName: string,
+): readonly number[] {
+  const layer = map.layers.find((candidate) => candidate.name === layerName);
+
+  if (layer?.data === undefined) {
+    throw new Error(`Validated tile layer "${layerName}" has no data.`);
+  }
+
+  return layer.data;
+}
+
 describe('farm map contract', () => {
   it('validates the real Tiled map and extracts gameplay metadata', () => {
     const map = validateFarmMapContract(loadFarmMap());
@@ -80,6 +94,39 @@ describe('farm map contract', () => {
         height: 224,
       },
     ]);
+  });
+
+  it('aligns soil tiles with the farmable interaction region', () => {
+    const map = validateFarmMapContract(loadFarmMap());
+    const metadata = extractFarmMapMetadata(map);
+    const detailData = requireTileData(map, 'GroundDetails');
+    const soilIndices = detailData.flatMap((tileId, index) =>
+      tileId === 2 ? [index] : [],
+    );
+    const soilColumns = soilIndices.map((index) => index % map.width);
+    const soilRows = soilIndices.map((index) => Math.floor(index / map.width));
+    const [farmableRegion] = metadata.farmableRegions;
+
+    if (farmableRegion === undefined || soilIndices.length === 0) {
+      throw new Error('Farm fixture requires soil tiles and a farmable region.');
+    }
+
+    const minColumn = Math.min(...soilColumns);
+    const maxColumn = Math.max(...soilColumns);
+    const minRow = Math.min(...soilRows);
+    const maxRow = Math.max(...soilRows);
+
+    expect({
+      x: minColumn * map.tilewidth,
+      y: minRow * map.tileheight,
+      width: (maxColumn - minColumn + 1) * map.tilewidth,
+      height: (maxRow - minRow + 1) * map.tileheight,
+    }).toEqual({
+      x: farmableRegion.x,
+      y: farmableRegion.y,
+      width: farmableRegion.width,
+      height: farmableRegion.height,
+    });
   });
 
   it('uses stableId instead of the mutable Tiled object id', () => {
@@ -106,6 +153,16 @@ describe('farm map contract', () => {
 
     expect(() => validateFarmMapContract(map)).toThrow(
       'Missing required layer "Collision".',
+    );
+  });
+
+  it('rejects malformed tile layer data length', () => {
+    const map = requireRecord(structuredClone(loadFarmMap()), 'map');
+    const groundLayer = findLayer(map, 'Ground');
+    groundLayer.data = [1];
+
+    expect(() => validateFarmMapContract(map)).toThrow(
+      'Layer "Ground" data length must equal 510, received 1.',
     );
   });
 
@@ -158,7 +215,7 @@ describe('farm map contract', () => {
         'Map orientation must be "orthogonal".',
       );
       expect(contractError.issues).toContain(
-        'Map.width must be a positive finite number.',
+        'Map.width must be a positive integer.',
       );
     }
   });

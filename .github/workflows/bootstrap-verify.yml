@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - main
+      - feat/ton-208-tiled-map-contract
   pull_request:
     branches:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -26,6 +27,25 @@ jobs:
           node-version: 22.16.0
           cache: npm
           cache-dependency-path: package-lock.json
+
+      - name: Generate farm map
+        run: npm run generate:maps
+
+      - name: Commit generated farm map
+        if: ${{ github.event_name == 'push' && github.ref_name == 'feat/ton-208-tiled-map-contract' }}
+        shell: bash
+        run: |
+          if git diff --quiet -- public/maps/farm-test.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/maps/farm-test.json
+          git commit -m "chore: regenerate farm test map"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Verify generated map is committed
+        run: git diff --exit-code -- public/maps/farm-test.json
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund

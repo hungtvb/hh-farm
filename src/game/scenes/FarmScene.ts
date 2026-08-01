@@ -1,9 +1,6 @@
 import Phaser from 'phaser';
 import { createPlayerTextures } from '../player/createPlayerTextures';
-import {
-  createPlayerCollisionWorld,
-  type PlayerCollisionWorld,
-} from '../player/collisionWorld';
+import { createPlayerCollisionWorld } from '../player/collisionWorld';
 import { PlayerController } from '../player/PlayerController';
 import { createFarmWorld, FARM_MAP_KEY } from '../world/farmWorld';
 
@@ -12,7 +9,6 @@ let farmSceneShutdownCount = 0;
 
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
-  private collisionWorld: PlayerCollisionWorld | undefined;
 
   public constructor() {
     super('farm');
@@ -63,13 +59,14 @@ export class FarmScene extends Phaser.Scene {
       spawnX: metadata.playerSpawn.x,
       spawnY: metadata.playerSpawn.y,
     });
-    this.collisionWorld = createPlayerCollisionWorld(
+    createPlayerCollisionWorld(
       this,
       this.playerController.sprite,
       metadata.collisions,
     );
 
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    this.writePhysicsDebugState();
 
     const camera = this.cameras.main;
     camera.roundPixels = true;
@@ -114,9 +111,16 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.sceneShutdownCount = String(
       farmSceneShutdownCount,
     );
-    this.collisionWorld?.destroy();
-    this.collisionWorld = undefined;
     this.playerController?.destroy();
     this.playerController = undefined;
   };
+
+  private writePhysicsDebugState(): void {
+    this.game.canvas.dataset.dynamicBodyCount = String(
+      this.physics.world.bodies.size,
+    );
+    this.game.canvas.dataset.staticBodyCount = String(
+      this.physics.world.staticBodies.size,
+    );
+  }
 }

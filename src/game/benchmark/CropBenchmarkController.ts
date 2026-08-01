@@ -23,6 +23,14 @@ const START_X = 144;
 const START_Y = 92;
 const COLUMN_SPACING = 28;
 const ROW_SPACING = 31;
+const CROP_TEXTURE_WIDTH = 24;
+const CROP_TEXTURE_HEIGHT = 32;
+const BATCH_LEFT = START_X - CROP_TEXTURE_WIDTH / 2;
+const BATCH_TOP = START_Y - CROP_TEXTURE_HEIGHT;
+const BATCH_WIDTH =
+  (COLUMN_COUNT - 1) * COLUMN_SPACING + CROP_TEXTURE_WIDTH;
+const BATCH_HEIGHT =
+  (ROW_COUNT - 1) * ROW_SPACING + CROP_TEXTURE_HEIGHT;
 
 export class CropBenchmarkController {
   private readonly crops: CropInstance[] = [];
@@ -32,8 +40,6 @@ export class CropBenchmarkController {
   public constructor(
     scene: Phaser.Scene,
     strategy: CropBenchmarkStrategy,
-    worldWidth: number,
-    worldHeight: number,
   ) {
     this.strategy = strategy;
     this.logicalCropCount =
@@ -45,24 +51,33 @@ export class CropBenchmarkController {
 
     if (strategy === 'batched') {
       const renderTexture = scene.add
-        .renderTexture(0, 0, worldWidth, worldHeight)
+        .renderTexture(
+          BATCH_LEFT,
+          BATCH_TOP,
+          BATCH_WIDTH,
+          BATCH_HEIGHT,
+        )
         .setOrigin(0, 0)
-        .setDepth(90);
+        .setDepth(90)
+        .setName('benchmark-crop-batch');
 
       for (let index = 0; index < CROP_BENCHMARK_INSTANCE_COUNT; index += 1) {
         const column = index % COLUMN_COUNT;
         const row = Math.floor(index / COLUMN_COUNT);
         const stage = index % CROP_GROWTH_STAGE_COUNT;
+        const worldX = START_X + column * COLUMN_SPACING;
+        const worldY = START_Y + row * ROW_SPACING;
 
         renderTexture.stamp(
           getCropTextureKey(stage),
-          undefined,
-          START_X + column * COLUMN_SPACING,
-          START_Y + row * ROW_SPACING,
+          null,
+          worldX - BATCH_LEFT,
+          worldY - BATCH_TOP,
           { originX: 0.5, originY: 1 },
         );
       }
 
+      renderTexture.render();
       return;
     }
 

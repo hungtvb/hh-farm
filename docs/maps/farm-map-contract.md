@@ -1,0 +1,100 @@
+# Farm map contract v1
+
+`public/maps/farm-test.json` is an orthogonal Tiled JSON map. Runtime loading is handled by `src/game/world/farmWorld.ts`; fail-fast validation and gameplay metadata extraction live in `src/data/maps/farmMapContract.ts`.
+
+## Map-level requirements
+
+| Field | Required value |
+| --- | --- |
+| `orientation` | `orthogonal` |
+| `width`, `height` | Positive finite numbers |
+| `tilewidth`, `tileheight` | Positive finite numbers |
+| `properties.mapContractVersion` | Integer `1` |
+| tileset name | `farm-placeholder` |
+
+## Required layers
+
+Layer names are API contracts and are case-sensitive.
+
+| Layer | Tiled type | Purpose |
+| --- | --- | --- |
+| `Ground` | Tile Layer | Base terrain rendered at depth 0 |
+| `GroundDetails` | Tile Layer | Soil, paths and ground decoration rendered above terrain |
+| `Collision` | Object Layer | Rectangular solid regions consumed by movement/collision systems |
+| `AbovePlayer` | Tile Layer | Bushes, canopies and foreground objects rendered above actors |
+| `SpawnPoints` | Object Layer | Point objects used to place actors |
+| `Interactions` | Object Layer | Rectangular gameplay regions such as farmable plots |
+
+## Object identity
+
+Tiled's numeric `id` is editor-owned and may change after copy, paste or map migration. Game code must never persist or reference it.
+
+Every object in `Collision`, `SpawnPoints` and `Interactions` requires a globally unique string property named `stableId`.
+
+Recommended format:
+
+```text
+<category>.<scope>.<semantic-name>
+```
+
+Examples:
+
+```text
+spawn.player.default
+collision.north-tree-line
+interaction.farm.starter-plot
+```
+
+## Object properties
+
+### `SpawnPoints`
+
+- Must be a Tiled point object.
+- Requires `stableId: string`.
+- Requires `role: string`.
+- Exactly one object must have `role = player` in contract v1.
+
+### `Collision`
+
+- Must be a rectangle with positive `width` and `height`.
+- Requires `stableId: string`.
+- Requires `kind: string`; the current map uses `solid`.
+
+### `Interactions`
+
+- Must be a rectangle with positive `width` and `height`.
+- Requires `stableId: string`.
+- Requires `kind: string`.
+- `kind = farmable` is exposed through `metadata.farmableRegions`.
+
+## Runtime flow
+
+```text
+PreloadScene
+  → load Tiled JSON + tileset SVG + validation JSON
+  → FarmScene
+  → validateFarmMapContract(raw JSON)
+  → extractFarmMapMetadata(validated map)
+  → Phaser.make.tilemap
+  → bind tileset by Tiled name
+  → create Ground / GroundDetails / AbovePlayer layers
+  → expose spawn, collision and interaction metadata
+```
+
+Validation runs before runtime systems consume the map. Invalid maps throw `FarmMapContractError`, which aggregates all discovered issues so content authors can fix more than one problem per run.
+
+## Editing checklist
+
+Before exporting from Tiled:
+
+1. Preserve required layer names and types exactly.
+2. Keep map orientation orthogonal.
+3. Keep `mapContractVersion = 1`.
+4. Assign a unique semantic `stableId` to every object layer object.
+5. Keep one and only one `role = player` spawn point.
+6. Use positive rectangle sizes for collisions and interactions.
+7. Run `npm run check` and the browser smoke test before merge.
+
+## Deliberate boundaries
+
+Contract v1 validates map topology and gameplay metadata only. Collision bodies, player movement, pathfinding and editable production art are implemented in later M0 issues. The current outlines and spawn marker are debug evidence, not final UI.

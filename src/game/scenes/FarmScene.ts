@@ -98,21 +98,17 @@ export class FarmScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(20_000);
 
-    this.events.once(
-      Phaser.Scenes.Events.SHUTDOWN,
-      this.handleShutdown,
-      this,
-    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
   }
 
   public update(_time: number, delta: number): void {
     this.playerController?.update(delta);
   }
 
-  private handleShutdown(): void {
+  private readonly handleShutdown = (): void => {
     this.collisionWorld?.destroy();
     this.collisionWorld = undefined;
     this.playerController?.destroy();
     this.playerController = undefined;
-  }
+  };
 }

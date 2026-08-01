@@ -14,7 +14,11 @@ let benchmarkRestartRequestCount = 0;
 function readBenchmarkStrategy(): CropBenchmarkStrategy {
   const strategy = new URLSearchParams(window.location.search).get('strategy');
 
-  if (strategy === 'baseline' || strategy === 'naive') {
+  if (
+    strategy === 'baseline' ||
+    strategy === 'batched' ||
+    strategy === 'naive'
+  ) {
     return strategy;
   }
 
@@ -37,7 +41,12 @@ export class CropBenchmarkScene extends Phaser.Scene {
     const { canvas } = this.game;
 
     createCropBenchmarkTextures(this);
-    this.crops = new CropBenchmarkController(this, strategy);
+    this.crops = new CropBenchmarkController(
+      this,
+      strategy,
+      map.widthInPixels,
+      map.heightInPixels,
+    );
 
     const camera = this.cameras.main;
     camera.stopFollow();

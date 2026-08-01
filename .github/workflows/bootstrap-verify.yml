@@ -1,9 +1,9 @@
-name: Bootstrap Verify
+name: Verify
 
 on:
   push:
     branches:
-      - feat/ton-207-bootstrap
+      - main
   pull_request:
     branches:
       - main

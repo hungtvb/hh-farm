@@ -7,8 +7,8 @@
 | Field | Required value |
 | --- | --- |
 | `orientation` | `orthogonal` |
-| `width`, `height` | Positive finite numbers |
-| `tilewidth`, `tileheight` | Positive finite numbers |
+| `width`, `height` | Positive integers |
+| `tilewidth`, `tileheight` | Positive integers |
 | `properties.mapContractVersion` | Integer `1` |
 | tileset name | `farm-placeholder` |
 
@@ -24,6 +24,8 @@ Layer names are API contracts and are case-sensitive.
 | `AbovePlayer` | Tile Layer | Bushes, canopies and foreground objects rendered above actors |
 | `SpawnPoints` | Object Layer | Point objects used to place actors |
 | `Interactions` | Object Layer | Rectangular gameplay regions such as farmable plots |
+
+Every tile layer must use the same width and height as the map. Its uncompressed `data` array must contain exactly `map.width × map.height` entries. This prevents row offsets that can still produce a technically renderable but visually corrupted map.
 
 ## Object identity
 
@@ -67,6 +69,8 @@ interaction.farm.starter-plot
 - Requires `kind: string`.
 - `kind = farmable` is exposed through `metadata.farmableRegions`.
 
+The test fixture also verifies that the soil tile bounding box in `GroundDetails` matches the starter `farmable` interaction rectangle. This is a fixture-level semantic assertion rather than a universal rule for every future map.
+
 ## Runtime flow
 
 ```text
@@ -90,10 +94,11 @@ Before exporting from Tiled:
 1. Preserve required layer names and types exactly.
 2. Keep map orientation orthogonal.
 3. Keep `mapContractVersion = 1`.
-4. Assign a unique semantic `stableId` to every object layer object.
-5. Keep one and only one `role = player` spawn point.
-6. Use positive rectangle sizes for collisions and interactions.
-7. Run `npm run check` and the browser smoke test before merge.
+4. Ensure every tile layer matches the map dimensions and has exactly `width × height` data entries.
+5. Assign a unique semantic `stableId` to every object layer object.
+6. Keep one and only one `role = player` spawn point.
+7. Use positive rectangle sizes for collisions and interactions.
+8. Run `npm run check` and the browser smoke test before merge.
 
 ## Deliberate boundaries
 

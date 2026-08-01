@@ -9,6 +9,11 @@ export class FarmScene extends Phaser.Scene {
   public create(): void {
     const { map, metadata } = createFarmWorld(this);
     const debugGraphics = this.add.graphics().setDepth(10);
+    const mapSummary = [
+      `${String(map.width)}×${String(map.height)} tiles`,
+      `${String(metadata.collisions.length)} collision regions`,
+      `${String(metadata.farmableRegions.length)} farmable region`,
+    ].join(' · ');
 
     this.game.canvas.dataset.scene = this.scene.key;
     this.game.canvas.dataset.map = FARM_MAP_KEY;
@@ -60,18 +65,13 @@ export class FarmScene extends Phaser.Scene {
       .setDepth(100);
 
     this.add
-      .text(
-        16,
-        58,
-        `${map.width}×${map.height} tiles · ${metadata.collisions.length} collision regions · ${metadata.farmableRegions.length} farmable region`,
-        {
-          backgroundColor: '#f6f1d8cc',
-          color: '#355f36',
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '14px',
-          padding: { x: 10, y: 6 },
-        },
-      )
+      .text(16, 58, mapSummary, {
+        backgroundColor: '#f6f1d8cc',
+        color: '#355f36',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '14px',
+        padding: { x: 10, y: 6 },
+      })
       .setScrollFactor(0)
       .setDepth(100);
   }

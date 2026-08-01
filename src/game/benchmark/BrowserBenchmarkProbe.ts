@@ -1,12 +1,26 @@
-import { summarizeFrameTimes } from '../../domain/benchmark/frameMetrics';
+import {
+  type FrameMetrics,
+  summarizeFrameTimes,
+} from '../../domain/benchmark/frameMetrics';
 
 const DEFAULT_WARMUP_MS = 1_000;
 const DEFAULT_SAMPLE_DURATION_MS = 5_000;
+
+export type BrowserBenchmarkResult = FrameMetrics &
+  Readonly<{
+    longTaskCount: number;
+    longTaskDurationMs: number;
+  }>;
+
+export type BrowserBenchmarkCompleteHandler = (
+  result: BrowserBenchmarkResult,
+) => void;
 
 export class BrowserBenchmarkProbe {
   private readonly canvas: HTMLCanvasElement;
   private readonly warmupMs: number;
   private readonly sampleDurationMs: number;
+  private readonly onComplete: BrowserBenchmarkCompleteHandler | undefined;
   private readonly frameTimesMs: number[] = [];
 
   private frameRequestId: number | undefined;
@@ -19,10 +33,12 @@ export class BrowserBenchmarkProbe {
 
   public constructor(
     canvas: HTMLCanvasElement,
+    onComplete?: BrowserBenchmarkCompleteHandler,
     warmupMs = DEFAULT_WARMUP_MS,
     sampleDurationMs = DEFAULT_SAMPLE_DURATION_MS,
   ) {
     this.canvas = canvas;
+    this.onComplete = onComplete;
     this.warmupMs = warmupMs;
     this.sampleDurationMs = sampleDurationMs;
     this.canvas.dataset.benchmarkStatus = 'warming-up';
@@ -105,27 +121,35 @@ export class BrowserBenchmarkProbe {
   };
 
   private complete(): void {
-    const metrics = summarizeFrameTimes(this.frameTimesMs);
+    const frameMetrics = summarizeFrameTimes(this.frameTimesMs);
+    const result: BrowserBenchmarkResult = {
+      ...frameMetrics,
+      longTaskCount: this.longTaskCount,
+      longTaskDurationMs: this.longTaskDurationMs,
+    };
 
     this.canvas.dataset.benchmarkStatus = 'complete';
-    this.canvas.dataset.benchmarkSampleCount = String(metrics.sampleCount);
-    this.canvas.dataset.benchmarkDurationMs = metrics.durationMs.toFixed(2);
-    this.canvas.dataset.benchmarkMeanFps = metrics.meanFps.toFixed(2);
-    this.canvas.dataset.benchmarkMeanFrameMs = metrics.meanFrameMs.toFixed(2);
+    this.canvas.dataset.benchmarkSampleCount = String(result.sampleCount);
+    this.canvas.dataset.benchmarkDurationMs = result.durationMs.toFixed(2);
+    this.canvas.dataset.benchmarkMeanFps = result.meanFps.toFixed(2);
+    this.canvas.dataset.benchmarkMeanFrameMs = result.meanFrameMs.toFixed(2);
     this.canvas.dataset.benchmarkMedianFrameMs =
-      metrics.medianFrameMs.toFixed(2);
-    this.canvas.dataset.benchmarkP95FrameMs = metrics.p95FrameMs.toFixed(2);
-    this.canvas.dataset.benchmarkP99FrameMs = metrics.p99FrameMs.toFixed(2);
+      result.medianFrameMs.toFixed(2);
+    this.canvas.dataset.benchmarkP95FrameMs = result.p95FrameMs.toFixed(2);
+    this.canvas.dataset.benchmarkP99FrameMs = result.p99FrameMs.toFixed(2);
     this.canvas.dataset.benchmarkFramesOver16_7Ms = String(
-      metrics.framesOver16_7Ms,
+      result.framesOver16_7Ms,
     );
     this.canvas.dataset.benchmarkFramesOver33_3Ms = String(
-      metrics.framesOver33_3Ms,
+      result.framesOver33_3Ms,
     );
-    this.canvas.dataset.benchmarkLongTaskCount = String(this.longTaskCount);
+    this.canvas.dataset.benchmarkLongTaskCount = String(
+      result.longTaskCount,
+    );
     this.canvas.dataset.benchmarkLongTaskDurationMs =
-      this.longTaskDurationMs.toFixed(2);
+      result.longTaskDurationMs.toFixed(2);
 
+    this.onComplete?.(result);
     this.destroy();
   }
 }

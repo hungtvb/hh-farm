@@ -17,13 +17,14 @@ The repository currently contains the technical foundation and a validated test 
 
 ```bash
 npm ci
+npm run generate:maps
 npm run dev
 npm run check
 npm run test:e2e
 npm run preview
 ```
 
-`npm run check` executes type checking, linting, unit tests and a production build. `npm run test:e2e` boots that production build in Chromium and verifies the active farm map.
+`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run check` verifies that the committed fixture matches the generator, then executes type checking, linting, unit tests and a production build. `npm run test:e2e` boots that production build in Chromium and verifies the active farm map.
 
 ## Architecture
 
@@ -39,13 +40,13 @@ The domain and data validation layers are intentionally isolated from Phaser so 
 
 ## World authoring
 
-The test world is exported from Tiled as orthogonal JSON. Required layer names, object properties and stable identity rules are documented in [Farm map contract v1](docs/maps/farm-map-contract.md).
+The technical test world is generated deterministically as Tiled-compatible orthogonal JSON. The same required layer names, object properties and stable identity rules apply when production maps are authored and exported from Tiled; they are documented in [Farm map contract v1](docs/maps/farm-map-contract.md).
 
 Tiled numeric object IDs are editor metadata and must not be used as persistent game identity. Object layers use globally unique semantic `stableId` properties instead.
 
 ## Verification
 
-GitHub Actions runs `npm ci`, typecheck, lint, unit tests, a production build and a Chromium FarmScene smoke test for pull requests and pushes to `main`.
+GitHub Actions regenerates the farm fixture and rejects drift, then runs `npm ci`, typecheck, lint, unit tests, a production build and a Chromium FarmScene smoke test for pull requests and pushes to `main`.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224` after the core technical spike.
 

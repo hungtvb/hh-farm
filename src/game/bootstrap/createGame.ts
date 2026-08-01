@@ -3,8 +3,8 @@ import { BootScene } from '../scenes/BootScene';
 import { FarmScene } from '../scenes/FarmScene';
 import { PreloadScene } from '../scenes/PreloadScene';
 
-const GAME_WIDTH = 960;
-const GAME_HEIGHT = 540;
+const GAME_WIDTH = 640;
+const GAME_HEIGHT = 360;
 
 export function createGame(parent: string | HTMLElement): Phaser.Game {
   return new Phaser.Game({
@@ -14,6 +14,13 @@ export function createGame(parent: string | HTMLElement): Phaser.Game {
     height: GAME_HEIGHT,
     backgroundColor: '#a8d98c',
     scene: [BootScene, PreloadScene, FarmScene],
+    physics: {
+      default: 'arcade',
+      arcade: {
+        gravity: { x: 0, y: 0 },
+        debug: false,
+      },
+    },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

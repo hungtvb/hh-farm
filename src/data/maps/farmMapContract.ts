@@ -147,7 +147,7 @@ function validateObjectLayer(
   }
 
   for (const [index, object] of layer.objects.entries()) {
-    const context = `Layer "${layerName}" object[${index}]`;
+    const context = `Layer "${layerName}" object[${String(index)}]`;
 
     if (!isRecord(object)) {
       issues.push(`${context} must be an object.`);
@@ -207,7 +207,7 @@ export function validateFarmMapContract(input: unknown): TiledFarmMap {
   const contractVersion = getPropertyValue(input, 'mapContractVersion');
   if (contractVersion !== FARM_MAP_CONTRACT_VERSION) {
     issues.push(
-      `Map property "mapContractVersion" must equal ${FARM_MAP_CONTRACT_VERSION}.`,
+      `Map property "mapContractVersion" must equal ${String(FARM_MAP_CONTRACT_VERSION)}.`,
     );
   }
 
@@ -239,12 +239,12 @@ export function validateFarmMapContract(input: unknown): TiledFarmMap {
   } else {
     for (const [index, layer] of input.layers.entries()) {
       if (!isRecord(layer)) {
-        issues.push(`Map layer[${index}] must be an object.`);
+        issues.push(`Map layer[${String(index)}] must be an object.`);
         continue;
       }
 
       if (typeof layer.name !== 'string' || layer.name.length === 0) {
-        issues.push(`Map layer[${index}] requires a name.`);
+        issues.push(`Map layer[${String(index)}] requires a name.`);
         continue;
       }
 
@@ -279,13 +279,13 @@ export function validateFarmMapContract(input: unknown): TiledFarmMap {
     FARM_MAP_LAYERS.interactions,
   ]) {
     const layer = layersByName.get(layerName);
-    if (layer !== undefined && layer.type === 'objectgroup') {
+    if (layer?.type === 'objectgroup') {
       validateObjectLayer(layer, layerName, stableIds, issues);
     }
   }
 
   const spawnLayer = layersByName.get(FARM_MAP_LAYERS.spawnPoints);
-  if (spawnLayer !== undefined && Array.isArray(spawnLayer.objects)) {
+  if (Array.isArray(spawnLayer?.objects)) {
     const playerSpawns = spawnLayer.objects.filter(
       (object) => isRecord(object) && getPropertyValue(object, 'role') === 'player',
     );
@@ -334,7 +334,7 @@ function toRegion(object: TiledMapObject): FarmMapRegion {
 
   if (stableId === undefined || kind === undefined) {
     throw new FarmMapContractError([
-      `Object ${object.id} is missing validated region metadata.`,
+      `Object ${String(object.id)} is missing validated region metadata.`,
     ]);
   }
 

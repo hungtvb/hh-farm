@@ -32,6 +32,8 @@ export type TiledMapLayer = Readonly<{
   id: number;
   name: string;
   type: 'tilelayer' | 'objectgroup';
+  width?: number;
+  height?: number;
   data?: readonly number[];
   objects?: readonly TiledMapObject[];
 }>;
@@ -135,6 +137,22 @@ function validatePositiveNumber(
   }
 }
 
+function validatePositiveInteger(
+  owner: UnknownRecord,
+  propertyName: string,
+  context: string,
+  issues: string[],
+): number | undefined {
+  const value = owner[propertyName];
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    issues.push(`${context}.${propertyName} must be a positive integer.`);
+    return undefined;
+  }
+
+  return value;
+}
+
 function validateObjectLayer(
   layer: UnknownRecord,
   layerName: string,
@@ -188,6 +206,38 @@ function validateObjectLayer(
   }
 }
 
+function validateTileLayer(
+  layer: UnknownRecord,
+  layerName: string,
+  mapWidth: number,
+  mapHeight: number,
+  issues: string[],
+): void {
+  if (layer.width !== mapWidth) {
+    issues.push(
+      `Layer "${layerName}" width must equal map width ${String(mapWidth)}.`,
+    );
+  }
+
+  if (layer.height !== mapHeight) {
+    issues.push(
+      `Layer "${layerName}" height must equal map height ${String(mapHeight)}.`,
+    );
+  }
+
+  if (!Array.isArray(layer.data)) {
+    issues.push(`Layer "${layerName}" must contain a data array.`);
+    return;
+  }
+
+  const expectedLength = mapWidth * mapHeight;
+  if (layer.data.length !== expectedLength) {
+    issues.push(
+      `Layer "${layerName}" data length must equal ${String(expectedLength)}, received ${String(layer.data.length)}.`,
+    );
+  }
+}
+
 export function validateFarmMapContract(input: unknown): TiledFarmMap {
   const issues: string[] = [];
 
@@ -199,10 +249,10 @@ export function validateFarmMapContract(input: unknown): TiledFarmMap {
     issues.push('Map orientation must be "orthogonal".');
   }
 
-  validatePositiveNumber(input, 'width', 'Map', issues);
-  validatePositiveNumber(input, 'height', 'Map', issues);
-  validatePositiveNumber(input, 'tilewidth', 'Map', issues);
-  validatePositiveNumber(input, 'tileheight', 'Map', issues);
+  const mapWidth = validatePositiveInteger(input, 'width', 'Map', issues);
+  const mapHeight = validatePositiveInteger(input, 'height', 'Map', issues);
+  validatePositiveInteger(input, 'tilewidth', 'Map', issues);
+  validatePositiveInteger(input, 'tileheight', 'Map', issues);
 
   const contractVersion = getPropertyValue(input, 'mapContractVersion');
   if (contractVersion !== FARM_MAP_CONTRACT_VERSION) {
@@ -269,6 +319,15 @@ export function validateFarmMapContract(input: unknown): TiledFarmMap {
       issues.push(
         `Layer "${layerName}" must have type "${expectedType}", received "${String(layer.type)}".`,
       );
+      continue;
+    }
+
+    if (
+      expectedType === 'tilelayer' &&
+      mapWidth !== undefined &&
+      mapHeight !== undefined
+    ) {
+      validateTileLayer(layer, layerName, mapWidth, mapHeight, issues);
     }
   }
 

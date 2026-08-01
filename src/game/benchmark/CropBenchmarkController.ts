@@ -70,7 +70,7 @@ export class CropBenchmarkController {
 
         renderTexture.stamp(
           getCropTextureKey(stage),
-          null,
+          undefined,
           worldX - BATCH_LEFT,
           worldY - BATCH_TOP,
           { originX: 0.5, originY: 1 },

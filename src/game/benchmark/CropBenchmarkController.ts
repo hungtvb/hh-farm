@@ -5,7 +5,7 @@ import {
 } from './createCropTextures';
 
 export const CROP_BENCHMARK_INSTANCE_COUNT = 300;
-export type CropBenchmarkStrategy = 'naive' | 'static';
+export type CropBenchmarkStrategy = 'baseline' | 'naive' | 'static';
 
 type CropInstance = Readonly<{
   image: Phaser.GameObjects.Image;
@@ -29,6 +29,10 @@ export class CropBenchmarkController {
     strategy: CropBenchmarkStrategy,
   ) {
     this.strategy = strategy;
+
+    if (strategy === 'baseline') {
+      return;
+    }
 
     for (let index = 0; index < CROP_BENCHMARK_INSTANCE_COUNT; index += 1) {
       const column = index % COLUMN_COUNT;
@@ -61,7 +65,7 @@ export class CropBenchmarkController {
   }
 
   public update(timeMs: number): void {
-    if (this.strategy === 'static') {
+    if (this.strategy !== 'naive') {
       return;
     }
 

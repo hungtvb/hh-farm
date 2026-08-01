@@ -55,7 +55,7 @@ export function createFarmWorld(scene: Phaser.Scene): FarmWorld {
 
   ground.setDepth(0);
   groundDetails.setDepth(1);
-  abovePlayer.setDepth(20);
+  abovePlayer.setDepth(10_000);
 
   scene.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 

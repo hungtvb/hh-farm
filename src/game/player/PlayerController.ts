@@ -141,30 +141,10 @@ export class PlayerController {
     }
 
     this.destroyed = true;
-    this.sprite.setVelocity(0, 0);
-    this.scene.cameras.main.stopFollow();
-    this.restartKey.off('down', this.handleRestart);
-
-    for (const key of [
-      this.cursors.left,
-      this.cursors.right,
-      this.cursors.up,
-      this.cursors.down,
-      this.wKey,
-      this.aKey,
-      this.sKey,
-      this.dKey,
-      this.restartKey,
-    ]) {
-      this.keyboard.removeKey(key);
-    }
-
     activeControllerCount -= 1;
     this.scene.game.canvas.dataset.activePlayerControllers = String(
       activeControllerCount,
     );
-    this.shadow.destroy();
-    this.sprite.destroy();
   }
 
   private writeDebugState(): void {

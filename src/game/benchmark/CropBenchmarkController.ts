@@ -5,7 +5,11 @@ import {
 } from './createCropTextures';
 
 export const CROP_BENCHMARK_INSTANCE_COUNT = 300;
-export type CropBenchmarkStrategy = 'baseline' | 'naive' | 'static';
+export type CropBenchmarkStrategy =
+  | 'baseline'
+  | 'batched'
+  | 'naive'
+  | 'static';
 
 type CropInstance = Readonly<{
   image: Phaser.GameObjects.Image;
@@ -23,14 +27,42 @@ const ROW_SPACING = 31;
 export class CropBenchmarkController {
   private readonly crops: CropInstance[] = [];
   private readonly strategy: CropBenchmarkStrategy;
+  private readonly logicalCropCount: number;
 
   public constructor(
     scene: Phaser.Scene,
     strategy: CropBenchmarkStrategy,
+    worldWidth: number,
+    worldHeight: number,
   ) {
     this.strategy = strategy;
+    this.logicalCropCount =
+      strategy === 'baseline' ? 0 : CROP_BENCHMARK_INSTANCE_COUNT;
 
     if (strategy === 'baseline') {
+      return;
+    }
+
+    if (strategy === 'batched') {
+      const renderTexture = scene.add
+        .renderTexture(0, 0, worldWidth, worldHeight)
+        .setOrigin(0, 0)
+        .setDepth(90);
+
+      for (let index = 0; index < CROP_BENCHMARK_INSTANCE_COUNT; index += 1) {
+        const column = index % COLUMN_COUNT;
+        const row = Math.floor(index / COLUMN_COUNT);
+        const stage = index % CROP_GROWTH_STAGE_COUNT;
+
+        renderTexture.stamp(
+          getCropTextureKey(stage),
+          undefined,
+          START_X + column * COLUMN_SPACING,
+          START_Y + row * ROW_SPACING,
+          { originX: 0.5, originY: 1 },
+        );
+      }
+
       return;
     }
 
@@ -61,7 +93,7 @@ export class CropBenchmarkController {
   }
 
   public get count(): number {
-    return this.crops.length;
+    return this.logicalCropCount;
   }
 
   public update(timeMs: number): void {

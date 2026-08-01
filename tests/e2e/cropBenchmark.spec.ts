@@ -24,11 +24,6 @@ type ChromeMemorySnapshot = Readonly<{
   jsEventListeners: number;
 }>;
 
-type CdpPerformanceMetric = Readonly<{
-  name: string;
-  value: number;
-}>;
-
 async function readNumberAttribute(
   locator: Locator,
   attributeName: string,
@@ -130,14 +125,8 @@ async function readChromeMemory(page: Page): Promise<ChromeMemorySnapshot> {
     await session.send('HeapProfiler.enable');
     await session.send('HeapProfiler.collectGarbage');
 
-    const performanceResult = (await session.send(
-      'Performance.getMetrics',
-    )) as { metrics: CdpPerformanceMetric[] };
-    const domCounters = (await session.send('Memory.getDOMCounters')) as {
-      documents: number;
-      nodes: number;
-      jsEventListeners: number;
-    };
+    const performanceResult = await session.send('Performance.getMetrics');
+    const domCounters = await session.send('Memory.getDOMCounters');
     const metricMap = new Map(
       performanceResult.metrics.map((metric) => [metric.name, metric.value]),
     );

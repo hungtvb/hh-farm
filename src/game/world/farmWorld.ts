@@ -53,10 +53,6 @@ export function createFarmWorld(scene: Phaser.Scene): FarmWorld {
     0,
   );
 
-  if (ground === null || groundDetails === null || abovePlayer === null) {
-    throw new Error('Unable to create one or more required farm tile layers.');
-  }
-
   ground.setDepth(0);
   groundDetails.setDepth(1);
   abovePlayer.setDepth(20);

@@ -7,17 +7,19 @@ import {
 import { PlayerController } from '../player/PlayerController';
 import { createFarmWorld, FARM_MAP_KEY } from '../world/farmWorld';
 
+let farmSceneCreateCount = 0;
+let farmSceneShutdownCount = 0;
+
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
   private collisionWorld: PlayerCollisionWorld | undefined;
-  private sceneInstance = 0;
 
   public constructor() {
     super('farm');
   }
 
   public create(): void {
-    this.sceneInstance += 1;
+    farmSceneCreateCount += 1;
 
     const { map, metadata } = createFarmWorld(this);
     const debugGraphics = this.add.graphics().setDepth(9_000);
@@ -31,6 +33,8 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.map = FARM_MAP_KEY;
     this.game.canvas.dataset.playerSpawn = metadata.playerSpawn.stableId;
     this.game.canvas.dataset.collisionCount = String(metadata.collisions.length);
+    this.game.canvas.dataset.sceneInstance = String(farmSceneCreateCount);
+    this.game.canvas.dataset.sceneShutdownCount = String(farmSceneShutdownCount);
 
     debugGraphics.lineStyle(2, 0x355f36, 0.4);
     for (const collision of metadata.collisions) {
@@ -55,7 +59,7 @@ export class FarmScene extends Phaser.Scene {
 
     createPlayerTextures(this);
     this.playerController = new PlayerController(this, {
-      sceneInstance: this.sceneInstance,
+      sceneInstance: farmSceneCreateCount,
       spawnX: metadata.playerSpawn.x,
       spawnY: metadata.playerSpawn.y,
     });
@@ -106,6 +110,10 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private readonly handleShutdown = (): void => {
+    farmSceneShutdownCount += 1;
+    this.game.canvas.dataset.sceneShutdownCount = String(
+      farmSceneShutdownCount,
+    );
     this.collisionWorld?.destroy();
     this.collisionWorld = undefined;
     this.playerController?.destroy();

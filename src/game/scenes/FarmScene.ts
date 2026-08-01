@@ -9,6 +9,8 @@ export class FarmScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const graphics = this.add.graphics();
 
+    this.game.canvas.dataset.scene = this.scene.key;
+
     graphics.fillStyle(0xa8d98c, 1);
     graphics.fillRect(0, 0, width, height);
 

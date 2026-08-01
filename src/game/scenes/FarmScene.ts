@@ -73,7 +73,7 @@ export class FarmScene extends Phaser.Scene {
       this.playerController.sprite.x,
       this.playerController.sprite.y,
     );
-    camera.startFollow(this.playerController.sprite, true, 0.2, 0.2);
+    camera.startFollow(this.playerController.sprite, true, 1, 1);
 
     this.add
       .text(16, 16, 'HH Farm · Player prototype', {

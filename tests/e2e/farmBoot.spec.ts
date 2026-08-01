@@ -1,6 +1,6 @@
-import { expect, type Locator, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
-function collectRuntimeErrors(page: Parameters<typeof test>[0]['page']): string[] {
+function collectRuntimeErrors(page: Page): string[] {
   const runtimeErrors: string[] = [];
 
   page.on('pageerror', (error) => {
@@ -35,7 +35,7 @@ async function readNumberAttribute(
   return value;
 }
 
-async function openFarm(page: Parameters<typeof test>[0]['page']): Promise<Locator> {
+async function openFarm(page: Page): Promise<Locator> {
   await page.goto('/');
 
   const canvas = page.locator(

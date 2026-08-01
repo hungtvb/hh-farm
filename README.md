@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-207 — Bootstrap Phaser 4 + Vite 8 TypeScript architecture`
+`TON-208 — Define Tiled map contract and load farm test map`
 
-The repository currently contains the technical skeleton only. Gameplay, production assets and deployment are tracked separately in Linear.
+The repository currently contains the technical foundation and a validated test farm map. Gameplay, production assets and deployment are tracked separately in Linear.
 
 ## Requirements
 
@@ -17,28 +17,36 @@ The repository currently contains the technical skeleton only. Gameplay, product
 
 ```bash
 npm ci
+npm run generate:maps
 npm run dev
 npm run check
+npm run test:e2e
 npm run preview
 ```
 
-`npm run check` executes type checking, linting, unit tests and a production build.
+`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run check` verifies that the committed fixture matches the generator, then executes type checking, linting, unit tests and a production build. `npm run test:e2e` boots that production build in Chromium and verifies the active farm map.
 
 ## Architecture
 
 ```text
 src/
 ├── domain/   # Pure TypeScript game rules. Must not import Phaser.
-├── game/     # Phaser bootstrap, scenes, render/input adapters.
-├── data/     # Typed content catalogs and fixtures.
+├── game/     # Phaser bootstrap, scenes, world loading and render/input adapters.
+├── data/     # Typed content catalogs, Tiled contracts and validation.
 └── ui/       # Browser UI overlays and presenters.
 ```
 
-The domain layer is intentionally isolated from Phaser so farming rules, inventory, economy and save migration can be tested without booting a renderer.
+The domain and data validation layers are intentionally isolated from Phaser so farming rules, content contracts and save migration can be tested without booting a renderer.
+
+## World authoring
+
+The technical test world is generated deterministically as Tiled-compatible orthogonal JSON. The same required layer names, object properties and stable identity rules apply when production maps are authored and exported from Tiled; they are documented in [Farm map contract v1](docs/maps/farm-map-contract.md).
+
+Tiled numeric object IDs are editor metadata and must not be used as persistent game identity. Object layers use globally unique semantic `stableId` properties instead.
 
 ## Verification
 
-GitHub Actions runs `npm ci` followed by `npm run check` on the feature branch and pull requests targeting `main`.
+GitHub Actions regenerates the farm fixture and rejects drift, then runs `npm ci`, typecheck, lint, unit tests, a production build and a Chromium FarmScene smoke test for pull requests and pushes to `main`.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224` after the core technical spike.
 

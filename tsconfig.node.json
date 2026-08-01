@@ -5,6 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": false,
+    "allowJs": true,
+    "checkJs": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -18,7 +20,9 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "eslint.config.js",
+    "scripts/**/*.mjs",
     "tests",
-    "src/domain/**/*.ts"
+    "src/domain/**/*.ts",
+    "src/data/**/*.ts"
   ]
 }

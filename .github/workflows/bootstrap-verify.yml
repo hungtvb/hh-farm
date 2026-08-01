@@ -27,6 +27,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Generate farm map
+        run: npm run generate:maps
+
+      - name: Verify generated map is committed
+        run: git diff --exit-code -- public/maps/farm-test.json
+
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 

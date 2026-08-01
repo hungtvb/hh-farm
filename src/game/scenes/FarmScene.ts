@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { createFarmWorld, FARM_MAP_KEY } from '../world/farmWorld';
 
 export class FarmScene extends Phaser.Scene {
   public constructor() {
@@ -6,45 +7,72 @@ export class FarmScene extends Phaser.Scene {
   }
 
   public create(): void {
-    const { width, height } = this.scale;
-    const graphics = this.add.graphics();
+    const { map, metadata } = createFarmWorld(this);
+    const debugGraphics = this.add.graphics().setDepth(10);
 
     this.game.canvas.dataset.scene = this.scene.key;
+    this.game.canvas.dataset.map = FARM_MAP_KEY;
+    this.game.canvas.dataset.playerSpawn = metadata.playerSpawn.stableId;
+    this.game.canvas.dataset.collisionCount = String(metadata.collisions.length);
 
-    graphics.fillStyle(0xa8d98c, 1);
-    graphics.fillRect(0, 0, width, height);
+    debugGraphics.lineStyle(2, 0x355f36, 0.55);
+    for (const collision of metadata.collisions) {
+      debugGraphics.strokeRect(
+        collision.x,
+        collision.y,
+        collision.width,
+        collision.height,
+      );
+    }
 
-    graphics.fillStyle(0xc99864, 1);
-    graphics.fillRoundedRect(width / 2 - 210, height / 2 - 105, 420, 210, 24);
-
-    graphics.lineStyle(4, 0x8c6548, 1);
-    for (let row = 0; row < 3; row += 1) {
-      for (let column = 0; column < 6; column += 1) {
-        graphics.strokeRoundedRect(
-          width / 2 - 180 + column * 60,
-          height / 2 - 70 + row * 60,
-          48,
-          48,
-          10,
-        );
-      }
+    debugGraphics.lineStyle(3, 0xf5df9b, 0.9);
+    for (const farmableRegion of metadata.farmableRegions) {
+      debugGraphics.strokeRoundedRect(
+        farmableRegion.x,
+        farmableRegion.y,
+        farmableRegion.width,
+        farmableRegion.height,
+        12,
+      );
     }
 
     this.add
-      .text(width / 2, 66, 'HH Farm', {
-        color: '#244a26',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '42px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+      .circle(
+        metadata.playerSpawn.x,
+        metadata.playerSpawn.y,
+        11,
+        0xf5df9b,
+        1,
+      )
+      .setStrokeStyle(3, 0x355f36)
+      .setDepth(11);
 
     this.add
-      .text(width / 2, height - 48, 'Technical spike · FarmScene is running', {
-        color: '#355f36',
+      .text(16, 16, 'HH Farm · Tiled contract v1', {
+        backgroundColor: '#f6f1d8dd',
+        color: '#244a26',
         fontFamily: 'system-ui, sans-serif',
         fontSize: '18px',
+        fontStyle: 'bold',
+        padding: { x: 12, y: 8 },
       })
-      .setOrigin(0.5);
+      .setScrollFactor(0)
+      .setDepth(100);
+
+    this.add
+      .text(
+        16,
+        58,
+        `${map.width}×${map.height} tiles · ${metadata.collisions.length} collision regions · ${metadata.farmableRegions.length} farmable region`,
+        {
+          backgroundColor: '#f6f1d8cc',
+          color: '#355f36',
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '14px',
+          padding: { x: 10, y: 6 },
+        },
+      )
+      .setScrollFactor(0)
+      .setDepth(100);
   }
 }

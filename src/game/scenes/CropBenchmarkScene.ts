@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { BrowserBenchmarkProbe } from '../benchmark/BrowserBenchmarkProbe';
 import {
-  CROP_BENCHMARK_INSTANCE_COUNT,
   CropBenchmarkController,
   type CropBenchmarkStrategy,
 } from '../benchmark/CropBenchmarkController';
@@ -15,7 +14,11 @@ let benchmarkRestartRequestCount = 0;
 function readBenchmarkStrategy(): CropBenchmarkStrategy {
   const strategy = new URLSearchParams(window.location.search).get('strategy');
 
-  return strategy === 'naive' ? 'naive' : 'static';
+  if (strategy === 'baseline' || strategy === 'naive') {
+    return strategy;
+  }
+
+  return 'static';
 }
 
 export class CropBenchmarkScene extends Phaser.Scene {
@@ -42,7 +45,7 @@ export class CropBenchmarkScene extends Phaser.Scene {
     camera.centerOn(map.widthInPixels / 2, map.heightInPixels / 2);
 
     this.add
-      .text(16, 16, 'HH Farm · 300 crop benchmark', {
+      .text(16, 16, 'HH Farm · crop render benchmark', {
         backgroundColor: '#f6f1d8ee',
         color: '#244a26',
         fontFamily: 'system-ui, sans-serif',
@@ -57,7 +60,7 @@ export class CropBenchmarkScene extends Phaser.Scene {
       .text(
         16,
         58,
-        `${strategy} · ${String(CROP_BENCHMARK_INSTANCE_COUNT)} crops · R to restart`,
+        `${strategy} · ${String(this.crops.count)} crops · R to restart`,
         {
           backgroundColor: '#f6f1d8dd',
           color: '#355f36',

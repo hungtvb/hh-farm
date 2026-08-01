@@ -8,8 +8,8 @@ import { PlayerController } from '../player/PlayerController';
 import { createFarmWorld, FARM_MAP_KEY } from '../world/farmWorld';
 
 export class FarmScene extends Phaser.Scene {
-  private playerController?: PlayerController;
-  private collisionWorld?: PlayerCollisionWorld;
+  private playerController: PlayerController | undefined;
+  private collisionWorld: PlayerCollisionWorld | undefined;
   private sceneInstance = 0;
 
   public constructor() {

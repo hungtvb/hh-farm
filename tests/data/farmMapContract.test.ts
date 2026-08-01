@@ -105,10 +105,10 @@ describe('farm map contract', () => {
     );
     const soilColumns = soilIndices.map((index) => index % map.width);
     const soilRows = soilIndices.map((index) => Math.floor(index / map.width));
-    const [farmableRegion] = metadata.farmableRegions;
+    const farmableRegion = metadata.farmableRegions[0];
 
-    if (farmableRegion === undefined || soilIndices.length === 0) {
-      throw new Error('Farm fixture requires soil tiles and a farmable region.');
+    if (soilIndices.length === 0) {
+      throw new Error('Farm fixture requires soil tiles.');
     }
 
     const minColumn = Math.min(...soilColumns);

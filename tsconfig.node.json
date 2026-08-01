@@ -19,6 +19,7 @@
     "playwright.config.ts",
     "eslint.config.js",
     "tests",
-    "src/domain/**/*.ts"
+    "src/domain/**/*.ts",
+    "src/data/**/*.ts"
   ]
 }

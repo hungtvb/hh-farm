@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-type BenchmarkStrategy = 'baseline' | 'naive' | 'static';
+type BenchmarkStrategy = 'baseline' | 'batched' | 'naive' | 'static';
 
 type FrameBenchmarkResult = Readonly<{
   strategy: string;
@@ -209,11 +209,11 @@ function verifyCompleteSample(result: FrameBenchmarkResult): void {
   expect(result.sampleCount).toBeGreaterThanOrEqual(60);
 }
 
-test('profiles 300 crops relative to the hosted Chromium baseline', async ({
+test('compares batched, static and naive crops on hosted Chromium', async ({
   browser,
   page,
 }, testInfo) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
 
   const runtimeErrors: string[] = [];
   page.on('pageerror', (error) => {
@@ -229,20 +229,24 @@ test('profiles 300 crops relative to the hosted Chromium baseline', async ({
   const baselineFrames = await readFrameBenchmark(baselineCanvas);
   const baselineMemory = await readChromeMemory(page);
 
+  const batchedCanvas = await openCropBenchmark(page, 'batched');
+  const batchedFrames = await readFrameBenchmark(batchedCanvas);
+  const batchedMemory = await readChromeMemory(page);
+
+  await page.screenshot({
+    path: 'test-results/crop-benchmark-batched.png',
+    fullPage: true,
+  });
+
   const staticCanvas = await openCropBenchmark(page, 'static');
   const staticFrames = await readFrameBenchmark(staticCanvas);
   const staticMemory = await readChromeMemory(page);
-
-  await page.screenshot({
-    path: 'test-results/crop-benchmark-static.png',
-    fullPage: true,
-  });
 
   const naiveCanvas = await openCropBenchmark(page, 'naive');
   const naiveFrames = await readFrameBenchmark(naiveCanvas);
   const naiveMemory = await readChromeMemory(page);
 
-  const restartCanvas = await openCropBenchmark(page, 'static');
+  const restartCanvas = await openCropBenchmark(page, 'batched');
   const restartBaseline = await readChromeMemory(page);
 
   for (let index = 0; index < 5; index += 1) {
@@ -269,6 +273,7 @@ test('profiles 300 crops relative to the hosted Chromium baseline', async ({
   const secondBatchListenerGrowth =
     memoryAfterTenRestarts.jsEventListeners -
     memoryAfterFiveRestarts.jsEventListeners;
+  const batchedFpsRetention = batchedFrames.meanFps / baselineFrames.meanFps;
   const staticFpsRetention = staticFrames.meanFps / baselineFrames.meanFps;
   const naiveFpsRetention = naiveFrames.meanFps / baselineFrames.meanFps;
 
@@ -289,13 +294,16 @@ test('profiles 300 crops relative to the hosted Chromium baseline', async ({
     cropCount: 300,
     frameResults: {
       baseline: baselineFrames,
+      batched: batchedFrames,
       static: staticFrames,
       naive: naiveFrames,
+      batchedFpsRetention,
       staticFpsRetention,
       naiveFpsRetention,
     },
     strategyMemory: {
       baseline: baselineMemory,
+      batched: batchedMemory,
       static: staticMemory,
       naive: naiveMemory,
     },
@@ -323,11 +331,12 @@ test('profiles 300 crops relative to the hosted Chromium baseline', async ({
   });
 
   verifyCompleteSample(baselineFrames);
+  verifyCompleteSample(batchedFrames);
   verifyCompleteSample(staticFrames);
   verifyCompleteSample(naiveFrames);
   expect(baselineFrames.meanFps).toBeGreaterThanOrEqual(25);
-  expect(staticFpsRetention).toBeGreaterThanOrEqual(0.9);
-  expect(staticFrames.p95FrameMs).toBeLessThanOrEqual(
+  expect(batchedFpsRetention).toBeGreaterThanOrEqual(0.9);
+  expect(batchedFrames.p95FrameMs).toBeLessThanOrEqual(
     baselineFrames.p95FrameMs + 5,
   );
   expect(secondBatchHeapGrowth).toBeLessThan(2 * 1024 * 1024);

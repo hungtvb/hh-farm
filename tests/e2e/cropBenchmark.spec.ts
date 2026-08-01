@@ -245,13 +245,6 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
     { timeout: 12_000 },
   );
 
-  expect(staticFrames.sampleCount).toBeGreaterThan(250);
-  expect(staticFrames.meanFps).toBeGreaterThanOrEqual(55);
-  expect(staticFrames.p95FrameMs).toBeLessThanOrEqual(25);
-  expect(staticFrames.framesOver33_3Ms).toBeLessThanOrEqual(2);
-  expect(naiveFrames.sampleCount).toBeGreaterThan(250);
-  expect(naiveFrames.meanFps).toBeGreaterThanOrEqual(50);
-
   const secondBatchHeapGrowth =
     memoryAfterTenRestarts.jsHeapUsedBytes -
     memoryAfterFiveRestarts.jsHeapUsedBytes;
@@ -261,14 +254,10 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
     memoryAfterTenRestarts.jsEventListeners -
     memoryAfterFiveRestarts.jsEventListeners;
 
-  expect(secondBatchHeapGrowth).toBeLessThan(2 * 1024 * 1024);
-  expect(secondBatchNodeGrowth).toBeLessThanOrEqual(20);
-  expect(secondBatchListenerGrowth).toBeLessThanOrEqual(2);
-  expect(runtimeErrors).toEqual([]);
-
   const report = {
     benchmark: 'TON-210',
-    commitSha: process.env.BENCHMARK_COMMIT_SHA ?? 'local',
+    testedCommitSha: process.env.GITHUB_SHA ?? 'local',
+    headRef: process.env.GITHUB_HEAD_REF ?? 'local',
     project: testInfo.project.name,
     browserVersion: browser.version(),
     platform: process.platform,
@@ -291,12 +280,31 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
       secondBatchNodeGrowth,
       secondBatchListenerGrowth,
     },
+    runtimeErrors,
   };
+  const reportJson = `${JSON.stringify(report, null, 2)}\n`;
 
   await mkdir('test-results', { recursive: true });
   await writeFile(
     'test-results/crop-benchmark-results.json',
-    `${JSON.stringify(report, null, 2)}\n`,
+    reportJson,
     'utf8',
   );
+  await testInfo.attach('crop-benchmark-results', {
+    body: Buffer.from(reportJson, 'utf8'),
+    contentType: 'application/json',
+  });
+
+  expect(staticFrames.durationMs).toBeGreaterThanOrEqual(4_900);
+  expect(staticFrames.sampleCount).toBeGreaterThanOrEqual(60);
+  expect(staticFrames.meanFps).toBeGreaterThanOrEqual(55);
+  expect(staticFrames.p95FrameMs).toBeLessThanOrEqual(25);
+  expect(staticFrames.framesOver33_3Ms).toBeLessThanOrEqual(2);
+  expect(naiveFrames.durationMs).toBeGreaterThanOrEqual(4_900);
+  expect(naiveFrames.sampleCount).toBeGreaterThanOrEqual(60);
+  expect(naiveFrames.meanFps).toBeGreaterThanOrEqual(50);
+  expect(secondBatchHeapGrowth).toBeLessThan(2 * 1024 * 1024);
+  expect(secondBatchNodeGrowth).toBeLessThanOrEqual(20);
+  expect(secondBatchListenerGrowth).toBeLessThanOrEqual(2);
+  expect(runtimeErrors).toEqual([]);
 });

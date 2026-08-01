@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+test.describe.configure({ retries: 0 });
+
 type BenchmarkStrategy = 'baseline' | 'batched' | 'naive' | 'static';
 
 type FrameBenchmarkResult = Readonly<{
@@ -276,6 +278,8 @@ test('compares batched, static and naive crops on hosted Chromium', async ({
   const batchedFpsRetention = batchedFrames.meanFps / baselineFrames.meanFps;
   const staticFpsRetention = staticFrames.meanFps / baselineFrames.meanFps;
   const naiveFpsRetention = naiveFrames.meanFps / baselineFrames.meanFps;
+  const batchedVsStatic = batchedFrames.meanFps / staticFrames.meanFps;
+  const batchedVsNaive = batchedFrames.meanFps / naiveFrames.meanFps;
 
   const report = {
     benchmark: 'TON-210',
@@ -285,6 +289,12 @@ test('compares batched, static and naive crops on hosted Chromium', async ({
     acceptanceTargets: {
       chromeDesktopMeanFps: 60,
       safariIPhoneMinimumFps: 30,
+      requiresPhysicalDeviceEvidence: true,
+    },
+    automatedArchitectureGate: {
+      batchedVsStaticMinimum: 1.1,
+      batchedVsNaiveMinimum: 1.25,
+      batchedP95MustNotExceedStatic: true,
     },
     project: testInfo.project.name,
     browserVersion: browser.version(),
@@ -300,6 +310,8 @@ test('compares batched, static and naive crops on hosted Chromium', async ({
       batchedFpsRetention,
       staticFpsRetention,
       naiveFpsRetention,
+      batchedVsStatic,
+      batchedVsNaive,
     },
     strategyMemory: {
       baseline: baselineMemory,
@@ -335,9 +347,10 @@ test('compares batched, static and naive crops on hosted Chromium', async ({
   verifyCompleteSample(staticFrames);
   verifyCompleteSample(naiveFrames);
   expect(baselineFrames.meanFps).toBeGreaterThanOrEqual(25);
-  expect(batchedFpsRetention).toBeGreaterThanOrEqual(0.9);
+  expect(batchedVsStatic).toBeGreaterThanOrEqual(1.1);
+  expect(batchedVsNaive).toBeGreaterThanOrEqual(1.25);
   expect(batchedFrames.p95FrameMs).toBeLessThanOrEqual(
-    baselineFrames.p95FrameMs + 5,
+    staticFrames.p95FrameMs,
   );
   expect(secondBatchHeapGrowth).toBeLessThan(2 * 1024 * 1024);
   expect(secondBatchNodeGrowth).toBeLessThanOrEqual(20);

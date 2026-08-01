@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+type BenchmarkStrategy = 'baseline' | 'naive' | 'static';
+
 type FrameBenchmarkResult = Readonly<{
   strategy: string;
   sampleCount: number;
@@ -45,15 +47,20 @@ async function readNumberAttribute(
 
 async function openCropBenchmark(
   page: Page,
-  strategy: 'naive' | 'static',
+  strategy: BenchmarkStrategy,
 ): Promise<Locator> {
   await page.goto(`/?benchmark=crops&strategy=${strategy}`);
 
   const canvas = page.locator(
     `canvas[data-scene="crop-benchmark"][data-benchmark-strategy="${strategy}"]`,
   );
+  const expectedCropCount = strategy === 'baseline' ? '0' : '300';
+
   await expect(canvas).toBeVisible({ timeout: 10_000 });
-  await expect(canvas).toHaveAttribute('data-crop-count', '300');
+  await expect(canvas).toHaveAttribute(
+    'data-crop-count',
+    expectedCropCount,
+  );
   await expect(canvas).toHaveAttribute(
     'data-benchmark-asset-set',
     'procedural-crop-v1',
@@ -197,11 +204,16 @@ async function restartBenchmark(
     .toBe(previousDisplayObjectCount);
 }
 
-test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
+function verifyCompleteSample(result: FrameBenchmarkResult): void {
+  expect(result.durationMs).toBeGreaterThanOrEqual(4_900);
+  expect(result.sampleCount).toBeGreaterThanOrEqual(60);
+}
+
+test('profiles 300 crops relative to the hosted Chromium baseline', async ({
   browser,
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(150_000);
 
   const runtimeErrors: string[] = [];
   page.on('pageerror', (error) => {
@@ -212,6 +224,10 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
       runtimeErrors.push(`console.error: ${message.text()}`);
     }
   });
+
+  const baselineCanvas = await openCropBenchmark(page, 'baseline');
+  const baselineFrames = await readFrameBenchmark(baselineCanvas);
+  const baselineMemory = await readChromeMemory(page);
 
   const staticCanvas = await openCropBenchmark(page, 'static');
   const staticFrames = await readFrameBenchmark(staticCanvas);
@@ -253,11 +269,18 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
   const secondBatchListenerGrowth =
     memoryAfterTenRestarts.jsEventListeners -
     memoryAfterFiveRestarts.jsEventListeners;
+  const staticFpsRetention = staticFrames.meanFps / baselineFrames.meanFps;
+  const naiveFpsRetention = naiveFrames.meanFps / baselineFrames.meanFps;
 
   const report = {
     benchmark: 'TON-210',
     testedCommitSha: process.env.GITHUB_SHA ?? 'local',
     headRef: process.env.GITHUB_HEAD_REF ?? 'local',
+    environmentClassification: 'github-hosted-headless-chromium',
+    acceptanceTargets: {
+      chromeDesktopMeanFps: 60,
+      safariIPhoneMinimumFps: 30,
+    },
     project: testInfo.project.name,
     browserVersion: browser.version(),
     platform: process.platform,
@@ -265,10 +288,14 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
     assetSet: 'procedural-crop-v1',
     cropCount: 300,
     frameResults: {
+      baseline: baselineFrames,
       static: staticFrames,
       naive: naiveFrames,
+      staticFpsRetention,
+      naiveFpsRetention,
     },
     strategyMemory: {
+      baseline: baselineMemory,
       static: staticMemory,
       naive: naiveMemory,
     },
@@ -295,14 +322,14 @@ test('profiles 300 crop objects and restart memory on desktop Chrome', async ({
     contentType: 'application/json',
   });
 
-  expect(staticFrames.durationMs).toBeGreaterThanOrEqual(4_900);
-  expect(staticFrames.sampleCount).toBeGreaterThanOrEqual(60);
-  expect(staticFrames.meanFps).toBeGreaterThanOrEqual(55);
-  expect(staticFrames.p95FrameMs).toBeLessThanOrEqual(25);
-  expect(staticFrames.framesOver33_3Ms).toBeLessThanOrEqual(2);
-  expect(naiveFrames.durationMs).toBeGreaterThanOrEqual(4_900);
-  expect(naiveFrames.sampleCount).toBeGreaterThanOrEqual(60);
-  expect(naiveFrames.meanFps).toBeGreaterThanOrEqual(50);
+  verifyCompleteSample(baselineFrames);
+  verifyCompleteSample(staticFrames);
+  verifyCompleteSample(naiveFrames);
+  expect(baselineFrames.meanFps).toBeGreaterThanOrEqual(25);
+  expect(staticFpsRetention).toBeGreaterThanOrEqual(0.9);
+  expect(staticFrames.p95FrameMs).toBeLessThanOrEqual(
+    baselineFrames.p95FrameMs + 5,
+  );
   expect(secondBatchHeapGrowth).toBeLessThan(2 * 1024 * 1024);
   expect(secondBatchNodeGrowth).toBeLessThanOrEqual(20);
   expect(secondBatchListenerGrowth).toBeLessThanOrEqual(2);

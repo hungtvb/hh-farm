@@ -1,6 +1,14 @@
 import Phaser from 'phaser';
 import { preloadFarmWorld } from '../world/farmWorld';
 
+function getTargetSceneKey(): string {
+  const benchmark = new URLSearchParams(window.location.search).get(
+    'benchmark',
+  );
+
+  return benchmark === 'crops' ? 'crop-benchmark' : 'farm';
+}
+
 export class PreloadScene extends Phaser.Scene {
   public constructor() {
     super('preload');
@@ -11,6 +19,6 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.scene.start('farm');
+    this.scene.start(getTargetSceneKey());
   }
 }

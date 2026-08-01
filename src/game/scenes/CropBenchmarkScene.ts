@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
-import { BrowserBenchmarkProbe } from '../benchmark/BrowserBenchmarkProbe';
+import {
+  BrowserBenchmarkProbe,
+  type BrowserBenchmarkResult,
+} from '../benchmark/BrowserBenchmarkProbe';
 import {
   CropBenchmarkController,
   type CropBenchmarkStrategy,
@@ -23,6 +26,14 @@ function readBenchmarkStrategy(): CropBenchmarkStrategy {
   }
 
   return 'static';
+}
+
+function formatBenchmarkResult(result: BrowserBenchmarkResult): string {
+  return [
+    `${result.meanFps.toFixed(1)} FPS`,
+    `p95 ${result.p95FrameMs.toFixed(1)} ms`,
+    `${String(result.longTaskCount)} long tasks`,
+  ].join(' · ');
 }
 
 export class CropBenchmarkScene extends Phaser.Scene {
@@ -76,6 +87,17 @@ export class CropBenchmarkScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(20_000);
 
+    const resultText = this.add
+      .text(16, 318, 'Warming up 1 s · sampling 5 s…', {
+        backgroundColor: '#173b27e6',
+        color: '#f6f1d8',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: '12px',
+        padding: { x: 10, y: 7 },
+      })
+      .setScrollFactor(0)
+      .setDepth(20_000);
+
     canvas.dataset.scene = this.scene.key;
     canvas.dataset.map = FARM_MAP_KEY;
     canvas.dataset.benchmarkStrategy = strategy;
@@ -91,6 +113,9 @@ export class CropBenchmarkScene extends Phaser.Scene {
     canvas.dataset.benchmarkDisplayObjectCount = String(
       this.children.list.length,
     );
+    canvas.dataset.benchmarkViewport = `${String(canvas.width)}x${String(canvas.height)}`;
+    canvas.dataset.benchmarkDevicePixelRatio = window.devicePixelRatio.toFixed(2);
+    canvas.dataset.benchmarkUserAgent = navigator.userAgent;
 
     if (this.input.keyboard === null) {
       throw new Error('Keyboard input is required for the crop benchmark.');
@@ -101,7 +126,12 @@ export class CropBenchmarkScene extends Phaser.Scene {
     );
     restartKey.on('down', this.handleRestart);
 
-    this.probe = new BrowserBenchmarkProbe(canvas);
+    this.probe = new BrowserBenchmarkProbe(canvas, (result) => {
+      const summary = formatBenchmarkResult(result);
+
+      resultText.setText(summary);
+      canvas.dataset.benchmarkResultSummary = summary;
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
   }
 

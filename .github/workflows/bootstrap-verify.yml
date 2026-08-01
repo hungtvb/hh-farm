@@ -37,6 +37,7 @@ jobs:
         run: npm run check
 
       - name: Upload lockfile
+        if: ${{ always() && hashFiles('package-lock.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: package-lock

@@ -104,7 +104,7 @@ describe('farm map contract', () => {
       (candidate) => requireRecord(candidate, 'layer').name !== 'Collision',
     );
 
-    expect(() => validateFarmMapContract(map)).toThrowError(
+    expect(() => validateFarmMapContract(map)).toThrow(
       'Missing required layer "Collision".',
     );
   });
@@ -123,7 +123,7 @@ describe('farm map contract', () => {
         requireRecord(candidate, 'property').name !== 'stableId',
     );
 
-    expect(() => validateFarmMapContract(map)).toThrowError(
+    expect(() => validateFarmMapContract(map)).toThrow(
       'requires non-empty string property "stableId".',
     );
   });
@@ -138,7 +138,7 @@ describe('farm map contract', () => {
 
     findProperty(collision, 'stableId').value = 'spawn.player.default';
 
-    expect(() => validateFarmMapContract(map)).toThrowError(
+    expect(() => validateFarmMapContract(map)).toThrow(
       'Duplicate stableId "spawn.player.default".',
     );
   });

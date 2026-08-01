@@ -25,7 +25,7 @@ const groundDetails = createTileData((column, row) =>
 const abovePlayer = createTileData((column, row) => {
   const topBushes = row === 2 && column >= 2 && column <= 4;
   const sideBushes =
-    (row === 6 || row === 12) && (column === 3 || column === 20);
+    (row === 6 || row === 12) && (column === 3 || column === 26);
   return topBushes || sideBushes ? 3 : 0;
 });
 

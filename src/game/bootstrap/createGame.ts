@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
+import { CropBenchmarkScene } from '../scenes/CropBenchmarkScene';
 import { FarmScene } from '../scenes/FarmScene';
 import { PreloadScene } from '../scenes/PreloadScene';
 
@@ -13,7 +14,7 @@ export function createGame(parent: string | HTMLElement): Phaser.Game {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     backgroundColor: '#a8d98c',
-    scene: [BootScene, PreloadScene, FarmScene],
+    scene: [BootScene, PreloadScene, FarmScene, CropBenchmarkScene],
     physics: {
       default: 'arcade',
       arcade: {

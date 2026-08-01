@@ -106,14 +106,43 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   expect(westCollisionX).toBeLessThanOrEqual(44);
   await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
 
+  const previousRestartRequestCount = await readNumberAttribute(
+    canvas,
+    'data-restart-request-count',
+  );
+  const previousSceneShutdownCount = await readNumberAttribute(
+    canvas,
+    'data-scene-shutdown-count',
+  );
   const previousSceneInstance = await readNumberAttribute(
     canvas,
     'data-scene-instance',
   );
+
+  await page.evaluate(() => {
+    const farmCanvas = document.querySelector<HTMLCanvasElement>('canvas');
+
+    window.addEventListener(
+      'keydown',
+      (event) => {
+        if (farmCanvas !== null) {
+          farmCanvas.dataset.lastKeyDown = `${event.code}:${String(event.keyCode)}`;
+        }
+      },
+      { once: true },
+    );
+  });
   await page.keyboard.down('KeyR');
   await page.waitForTimeout(100);
   await page.keyboard.up('KeyR');
 
+  await expect(canvas).toHaveAttribute('data-last-key-down', 'KeyR:82');
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-restart-request-count'))
+    .toBeGreaterThan(previousRestartRequestCount);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-scene-shutdown-count'))
+    .toBeGreaterThan(previousSceneShutdownCount);
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-scene-instance'))
     .toBeGreaterThan(previousSceneInstance);

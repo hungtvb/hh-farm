@@ -21,6 +21,7 @@
     "playwright.config.ts",
     "eslint.config.js",
     "scripts/**/*.mjs",
+    "scripts/**/*.ts",
     "tests",
     "src/application/**/*.ts",
     "src/domain/**/*.ts",

@@ -1,16 +1,6 @@
 const [deploymentUrlArgument, expectedSha, expectedEnvironment] =
   process.argv.slice(2);
 
-if (
-  deploymentUrlArgument === undefined ||
-  expectedSha === undefined ||
-  expectedEnvironment === undefined
-) {
-  throw new Error(
-    'Usage: node scripts/verify-pages-deployment.mjs <url> <sha> <preview|production>',
-  );
-}
-
 const deploymentUrl = new URL(deploymentUrlArgument);
 
 /**
@@ -84,13 +74,14 @@ if (versionMetadata.deploymentEnvironment !== expectedEnvironment) {
 
 await fetchRequired(new URL('/maps/farm-test.json', deploymentUrl));
 
+/** @type {Set<string>} */
 const assetReferences = new Set();
 const assetPattern = /(?:src|href)="([^"#?]+)"/gu;
 
 for (const match of indexHtml.matchAll(assetPattern)) {
   const assetPath = match[1];
 
-  if (assetPath !== undefined && !assetPath.startsWith('data:')) {
+  if (!assetPath.startsWith('data:')) {
     assetReferences.add(new URL(assetPath, deploymentUrl).href);
   }
 }

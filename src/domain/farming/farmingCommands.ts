@@ -90,6 +90,8 @@ export type HarvestCropErrorCode =
   | 'no_crop'
   | 'unknown_crop';
 
+const EMPTY_EVENTS = Object.freeze([]) as readonly [];
+
 function createFailure<
   TInventory,
   TCode extends FarmingCommandErrorCode,
@@ -102,7 +104,7 @@ function createFailure<
   return Object.freeze({
     ok: false,
     state,
-    events: Object.freeze([]),
+    events: EMPTY_EVENTS,
     error: Object.freeze({ code, tileId, message }),
   });
 }

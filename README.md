@@ -24,7 +24,7 @@ npm run test:e2e
 npm run preview
 ```
 
-`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run check` verifies that the committed fixture matches the generator, then executes type checking, linting, unit tests and a production build. `npm run test:e2e` boots that production build in Chromium and verifies the farm runtime, scene restart lifecycle, crop benchmark and IndexedDB save recovery.
+`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run check` verifies that the committed fixture matches the generator, then executes type checking, linting, unit tests, a production build and a production-bundle diagnostics scan. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark and IndexedDB save recovery in Chromium.
 
 ## Architecture
 
@@ -65,22 +65,21 @@ Automated evidence recommends individual crop Images with event-driven state cha
 
 ## IndexedDB save spike
 
-The production bundle includes a technical harness used by automated recovery tests:
+The v2 envelope stores game/schema metadata and farm/player payload. IndexedDB keeps `current` and `previous` slots; invalid current data returns an explicit recovered/unrecoverable result rather than silently resetting the farm.
 
-```text
-/?save-spike=reset
-/?save-spike=save&farmName=Persistent%20Farm&day=9&coins=1775&x=416&y=288
-/?save-spike=load
-/?save-spike=seed-recovery
-/?save-spike=seed-v1
-/?save-spike=unavailable
+Automated recovery scenarios use an `e2e`-only technical harness. Routes such as `?save-spike=reset` and raw-slot corruption helpers are removed from normal production builds. `npm run check` scans `dist` and fails when a diagnostics marker leaks into the production bundle.
+
+Run the technical scenarios through:
+
+```bash
+npm run test:e2e
 ```
 
-The v2 envelope stores game/schema metadata and farm/player payload. IndexedDB keeps `current` and `previous` slots; invalid current data returns an explicit recovered/unrecoverable result rather than silently resetting the farm. See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md).
+See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md).
 
 ## Verification
 
-GitHub Actions regenerates the farm fixture and rejects drift, then runs `npm ci`, typecheck, lint, unit tests, a production build and serialized Chromium runtime tests for pull requests and pushes to `main`.
+GitHub Actions regenerates the farm fixture and rejects drift, then runs `npm ci`, typecheck, lint, unit tests, a production build, production-bundle diagnostics scan and serialized Chromium runtime tests for pull requests and pushes to `main`.
 
 The browser suite includes a persistent-profile test that closes Chromium completely, reopens it with the same profile and verifies the exact IndexedDB save. It also checks corrupted-current recovery, v1 migration and unavailable storage.
 

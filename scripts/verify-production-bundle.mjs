@@ -2,12 +2,35 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const DIST_DIRECTORY = new URL('../dist/', import.meta.url);
+const VERSION_FILE = new URL('version.json', DIST_DIRECTORY);
 const FORBIDDEN_MARKERS = [
   'HH Farm · IndexedDB save spike',
   'seed-recovery',
   'corrupted-current',
   'writeRawSaveSlotForDiagnostics',
 ];
+const DEPLOYMENT_ENVIRONMENTS = new Set([
+  'local',
+  'preview',
+  'production',
+  'test',
+]);
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is string}
+ */
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 
 /**
  * @param {URL} directoryUrl
@@ -53,6 +76,39 @@ for (const fileUrl of bundleFiles) {
   }
 }
 
+/** @type {unknown} */
+const versionMetadata = JSON.parse(await readFile(VERSION_FILE, 'utf8'));
+
+if (!isRecord(versionMetadata)) {
+  throw new Error('dist/version.json must contain an object.');
+}
+
+for (const key of ['appVersion', 'gitSha', 'gitRef', 'builtAt']) {
+  if (!isNonEmptyString(versionMetadata[key])) {
+    throw new Error(`dist/version.json field "${key}" must be non-empty.`);
+  }
+}
+
+if (
+  !isNonEmptyString(versionMetadata.deploymentEnvironment) ||
+  !DEPLOYMENT_ENVIRONMENTS.has(versionMetadata.deploymentEnvironment)
+) {
+  throw new Error(
+    'dist/version.json deploymentEnvironment is not recognized.',
+  );
+}
+
+if (!Number.isFinite(Date.parse(String(versionMetadata.builtAt)))) {
+  throw new Error('dist/version.json builtAt must be a valid date-time.');
+}
+
+if (
+  versionMetadata.deploymentUrl !== null &&
+  !isNonEmptyString(versionMetadata.deploymentUrl)
+) {
+  throw new Error('dist/version.json deploymentUrl must be null or non-empty.');
+}
+
 console.log(
-  `Verified ${String(bundleFiles.length)} production bundle files: save diagnostics are absent.`,
+  `Verified ${String(bundleFiles.length)} production bundle files and version.json; save diagnostics are absent.`,
 );

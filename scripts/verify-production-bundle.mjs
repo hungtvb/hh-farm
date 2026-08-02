@@ -9,12 +9,20 @@ const FORBIDDEN_MARKERS = [
   'writeRawSaveSlotForDiagnostics',
 ];
 
+/**
+ * @param {URL} directoryUrl
+ * @returns {Promise<URL[]>}
+ */
 async function listFiles(directoryUrl) {
   const entries = await readdir(directoryUrl, { withFileTypes: true });
+  /** @type {URL[]} */
   const files = [];
 
   for (const entry of entries) {
-    const entryUrl = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directoryUrl);
+    const entryUrl = new URL(
+      `${entry.name}${entry.isDirectory() ? '/' : ''}`,
+      directoryUrl,
+    );
 
     if (entry.isDirectory()) {
       files.push(...(await listFiles(entryUrl)));
@@ -27,17 +35,19 @@ async function listFiles(directoryUrl) {
 }
 
 const files = await listFiles(DIST_DIRECTORY);
-const bundleFiles = files.filter((fileUrl) =>
-  ['.html', '.js', '.css'].includes(fileUrl.pathname.slice(fileUrl.pathname.lastIndexOf('.'))),
-);
+const bundleFiles = files.filter((fileUrl) => {
+  const extension = fileUrl.pathname.slice(fileUrl.pathname.lastIndexOf('.'));
+  return ['.html', '.js', '.css'].includes(extension);
+});
 
 for (const fileUrl of bundleFiles) {
   const content = await readFile(fileUrl, 'utf8');
 
   for (const marker of FORBIDDEN_MARKERS) {
     if (content.includes(marker)) {
+      const relativePath = fileUrl.pathname.split('/dist/')[1] ?? '';
       throw new Error(
-        `Production bundle leaked save diagnostics marker "${marker}" in ${join('dist', fileUrl.pathname.split('/dist/')[1] ?? '')}.`,
+        `Production bundle leaked save diagnostics marker "${marker}" in ${join('dist', relativePath)}.`,
       );
     }
   }

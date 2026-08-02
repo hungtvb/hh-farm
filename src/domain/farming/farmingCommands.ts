@@ -90,7 +90,7 @@ export type HarvestCropErrorCode =
   | 'no_crop'
   | 'unknown_crop';
 
-const EMPTY_EVENTS = Object.freeze([]) as readonly [];
+const EMPTY_EVENTS: readonly [] = Object.freeze([]);
 
 function createFailure<
   TInventory,
@@ -117,10 +117,12 @@ function createSuccess<
   inventory: TInventory,
   event: TEvent,
 ): FarmingCommandSuccess<TInventory, TEvent> {
+  const events: readonly [TEvent] = Object.freeze([event]);
+
   return Object.freeze({
     ok: true,
     state: Object.freeze({ field, inventory }),
-    events: Object.freeze([Object.freeze(event)]) as readonly [TEvent],
+    events,
   });
 }
 

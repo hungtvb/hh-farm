@@ -55,9 +55,15 @@ function readInteger(
 }
 
 function createPayload(params: URLSearchParams): FarmSavePayload {
+  const requestedFarmName = params.get('farmName')?.trim();
+  const farmName =
+    requestedFarmName === undefined || requestedFarmName.length === 0
+      ? 'Browser Restart Farm'
+      : requestedFarmName;
+
   return {
     farm: {
-      farmName: params.get('farmName')?.trim() || 'Browser Restart Farm',
+      farmName,
       day: readInteger(params, 'day', 7),
       coins: readInteger(params, 'coins', 1_250),
     },

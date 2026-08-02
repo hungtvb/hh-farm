@@ -55,6 +55,10 @@ function defaultIndexedDbFactory(): IDBFactory | null {
   return typeof indexedDB === 'undefined' ? null : indexedDB;
 }
 
+function readUnknown(store: IDBObjectStore, key: string): Promise<unknown> {
+  return requestToPromise(store.get(key) as IDBRequest<unknown>);
+}
+
 export class IndexedDbSaveStorage implements SaveStorage {
   private readonly factory: IDBFactory | null;
   private readonly databaseName: string;
@@ -74,10 +78,8 @@ export class IndexedDbSaveStorage implements SaveStorage {
       const transaction = database.transaction(STORE_NAME, 'readonly');
       const completed = transactionToPromise(transaction);
       const store = transaction.objectStore(STORE_NAME);
-      const [current, previous] = await Promise.all([
-        requestToPromise(store.get(CURRENT_KEY)),
-        requestToPromise(store.get(PREVIOUS_KEY)),
-      ]);
+      const current = await readUnknown(store, CURRENT_KEY);
+      const previous = await readUnknown(store, PREVIOUS_KEY);
 
       await completed;
 
@@ -97,7 +99,7 @@ export class IndexedDbSaveStorage implements SaveStorage {
       const transaction = database.transaction(STORE_NAME, 'readwrite');
       const completed = transactionToPromise(transaction);
       const store = transaction.objectStore(STORE_NAME);
-      const current = await requestToPromise(store.get(CURRENT_KEY));
+      const current = await readUnknown(store, CURRENT_KEY);
 
       if (current !== undefined) {
         store.put(current, PREVIOUS_KEY);

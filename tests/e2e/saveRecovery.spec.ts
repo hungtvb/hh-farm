@@ -24,10 +24,13 @@ async function readSaveSpikeResult(page: Page): Promise<unknown> {
 }
 
 function openPersistentPage(context: BrowserContext): Promise<Page> {
-  const existingPage = context.pages()[0];
-  return existingPage === undefined
-    ? context.newPage()
-    : Promise.resolve(existingPage);
+  const pages = context.pages();
+
+  if (pages.length === 0) {
+    return context.newPage();
+  }
+
+  return Promise.resolve(pages[0]);
 }
 
 test('restores the farm after reload and a persistent Chromium restart', async () => {

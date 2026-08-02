@@ -23,8 +23,11 @@ async function readSaveSpikeResult(page: Page): Promise<unknown> {
   return JSON.parse(content) as unknown;
 }
 
-async function openPersistentPage(context: BrowserContext): Promise<Page> {
-  return context.pages()[0] ?? context.newPage();
+function openPersistentPage(context: BrowserContext): Promise<Page> {
+  const existingPage = context.pages()[0];
+  return existingPage === undefined
+    ? context.newPage()
+    : Promise.resolve(existingPage);
 }
 
 test('restores the farm after reload and a persistent Chromium restart', async () => {
@@ -84,6 +87,10 @@ test('restores the farm after reload and a persistent Chromium restart', async (
       },
     });
 
+    await page.screenshot({
+      path: 'test-results/save-browser-restart.png',
+      fullPage: true,
+    });
     await page.reload();
     await expect(readSaveSpikeResult(page)).resolves.toEqual(restartedResult);
   } finally {
@@ -110,6 +117,10 @@ test('recovers corrupted current data and exposes migration/unavailable states',
         player: { x: 160, y: 192 },
       },
     },
+  });
+  await page.screenshot({
+    path: 'test-results/save-recovery.png',
+    fullPage: true,
   });
 
   await page.goto('/?save-spike=seed-v1');

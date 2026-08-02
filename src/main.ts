@@ -1,6 +1,9 @@
 import './styles.css';
+import { exposeBuildInfo } from './build/buildInfo';
 
 async function bootstrap(): Promise<void> {
+  exposeBuildInfo();
+
   const params = new URLSearchParams(window.location.search);
   const saveSpikeEnabled = import.meta.env.MODE === 'e2e';
 

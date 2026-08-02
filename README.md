@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-213 — Set up CI and Cloudflare Pages production/preview deployment`
+`TON-214 — Build typed content catalogs and validation pipeline`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation and repository-side Pages delivery pipeline. Production gameplay and art are tracked separately in Linear.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline and typed gameplay-content foundation. Farming gameplay and production art are tracked separately in Linear.
 
 ## Requirements
 
@@ -18,13 +18,14 @@ The repository currently contains the validated farm-map contract, player moveme
 ```bash
 npm ci
 npm run generate:maps
+npm run validate:content
 npm run dev
 npm run check
 npm run test:e2e
 npm run preview
 ```
 
-`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run check` verifies the committed fixture, type checking, linting, unit tests, production build, build metadata and production diagnostics exclusion. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark, IndexedDB recovery and build identity in Chromium.
+`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run validate:content` compiles and validates the real crop/item/tool/shop source. `npm run check` runs both data gates, type checking, linting, unit tests, production build, build metadata and production diagnostics exclusion. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark, IndexedDB recovery and build identity in Chromium.
 
 ## Architecture
 
@@ -39,7 +40,21 @@ src/
 └── ui/              # Browser UI overlays and presenters.
 ```
 
-Domain code is isolated from Phaser and browser storage APIs so game rules, content contracts, benchmark statistics and save migration can be tested without booting a renderer or IndexedDB.
+Domain and content validation remain isolated from Phaser and browser storage APIs, allowing game rules, references, content boundaries, benchmark statistics and save migration to be tested without booting a renderer or IndexedDB.
+
+## Typed gameplay content
+
+The source catalog defines:
+
+- turnip, carrot and strawberry crops;
+- seed and harvested-produce items;
+- hoe and watering-can tools;
+- seed shop offers;
+- registered sprite keys and crop growth stages.
+
+Catalog validation rejects duplicate IDs, negative prices, invalid quantities and boundaries, missing sprite keys, malformed growth stages, invalid yields and broken item/category references. Every issue includes a path, stable error code and message.
+
+Gameplay code consumes the validated immutable `gameContentCatalog`; it must not duplicate prices, growth durations, yields or sprite keys. See [data-layer documentation](src/data/README.md).
 
 ## World authoring
 
@@ -92,7 +107,7 @@ Setup, required GitHub rules and rollback instructions are in [TON-213 Cloudflar
 
 ## Verification
 
-GitHub Actions runs generated-map drift checks, typecheck, lint, unit tests, production build validation and serialized Chromium runtime tests. Production assets are scanned to ensure technical save diagnostics are absent.
+GitHub Actions runs generated-map drift and content-catalog validation before typecheck, lint, unit tests, production build validation and serialized Chromium runtime tests. Production assets are scanned to ensure technical save diagnostics are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224`.
 

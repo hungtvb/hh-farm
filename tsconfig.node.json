@@ -22,6 +22,7 @@
     "eslint.config.js",
     "scripts/**/*.mjs",
     "tests",
+    "src/application/**/*.ts",
     "src/domain/**/*.ts",
     "src/data/**/*.ts"
   ]

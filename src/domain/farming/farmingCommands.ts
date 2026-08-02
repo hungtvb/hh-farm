@@ -26,6 +26,7 @@ export type FarmingCommandErrorCode =
   | 'already_tilled'
   | 'already_watered'
   | 'crop_not_mature'
+  | 'invalid_day'
   | 'invalid_target'
   | 'inventory_full'
   | 'no_crop'
@@ -74,6 +75,7 @@ export type TillSoilErrorCode =
   | 'invalid_target'
   | 'tile_occupied';
 export type PlantSeedErrorCode =
+  | 'invalid_day'
   | 'invalid_target'
   | 'no_seed'
   | 'soil_not_tilled'
@@ -240,6 +242,15 @@ export function plantSeed<TInventory>(
       'unknown_crop',
       command.tileId,
       `Unknown crop ID: "${command.cropId}".`,
+    );
+  }
+
+  if (!Number.isInteger(command.plantedDay) || command.plantedDay < 1) {
+    return createFailure(
+      state,
+      'invalid_day',
+      command.tileId,
+      'Planting day must be a positive integer.',
     );
   }
 

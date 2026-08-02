@@ -158,5 +158,5 @@ Existing map, player, IndexedDB recovery, build metadata and 300-crop benchmark 
 
 - Day advancement and crop-stage transitions: TON-216.
 - Production inventory/hotbar implementation: TON-217.
-- Scene input targeting and visible farming interactions: TON-219/T0N-220.
+- Scene input targeting and visible farming interactions: TON-219/TON-220.
 - Persistence of the expanded farm field: integrate when the gameplay aggregate replaces the save spike fixture.

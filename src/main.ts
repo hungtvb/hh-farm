@@ -2,8 +2,9 @@ import './styles.css';
 
 async function bootstrap(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
+  const saveSpikeEnabled = import.meta.env.MODE === 'e2e';
 
-  if (params.has('save-spike')) {
+  if (saveSpikeEnabled && params.has('save-spike')) {
     const { runSaveSpikeHarness } = await import('./dev/saveSpikeHarness');
     await runSaveSpikeHarness();
     return;

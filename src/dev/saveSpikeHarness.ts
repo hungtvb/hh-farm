@@ -1,6 +1,7 @@
 import { FarmSaveRepository } from '../application/save/farmSaveRepository';
 import type { FarmSavePayload } from '../domain/save/farmSave';
 import { IndexedDbSaveStorage } from '../infrastructure/save/indexedDbSaveStorage';
+import { writeRawSaveSlotForDiagnostics } from './indexedDbSaveDiagnostics';
 
 const GAME_VERSION = '0.1.0';
 const FIXED_SAVED_AT = '2026-08-02T12:00:00.000Z';
@@ -139,7 +140,7 @@ export async function runSaveSpikeHarness(): Promise<void> {
           farm: { farmName: 'Newest Farm', day: 5, coins: 950 },
           player: { x: 192, y: 224 },
         });
-        await storage.writeRawSlotForDiagnostics('current', {
+        await writeRawSaveSlotForDiagnostics('current', {
           schemaVersion: 2,
           payload: 'corrupted-current',
         });
@@ -148,7 +149,7 @@ export async function runSaveSpikeHarness(): Promise<void> {
       }
       case 'seed-v1': {
         await repository.clear();
-        await storage.writeRawSlotForDiagnostics('current', {
+        await writeRawSaveSlotForDiagnostics('current', {
           schemaVersion: 1,
           gameVersion: '0.0.9',
           savedAt: '2026-07-30T08:30:00.000Z',

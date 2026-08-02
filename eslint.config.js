@@ -26,6 +26,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['tests/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-dynamic-delete': 'off',
+    },
+  },
+  {
     files: ['eslint.config.js'],
     extends: [tseslint.configs.disableTypeChecked],
   },

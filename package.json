@@ -16,8 +16,9 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:e2e": "playwright test",
-    "check": "npm run generate:maps && git diff --exit-code -- public/maps/farm-test.json && npm run typecheck && npm run lint && npm run test:run && npm run build"
+    "test:e2e": "vite build --mode e2e && playwright test",
+    "verify:production-bundle": "node scripts/verify-production-bundle.mjs",
+    "check": "npm run generate:maps && git diff --exit-code -- public/maps/farm-test.json && npm run typecheck && npm run lint && npm run test:run && npm run build && npm run verify:production-bundle"
   },
   "dependencies": {
     "phaser": "4.2.1"

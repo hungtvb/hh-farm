@@ -30,3 +30,30 @@ canvas {
   display: block;
   margin: 0 auto;
 }
+
+.save-spike {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow: auto;
+  padding: 32px;
+  background: linear-gradient(180deg, #dff3cf 0%, #f7edcd 100%);
+}
+
+.save-spike h1,
+.save-spike p {
+  margin: 0;
+}
+
+.save-spike pre {
+  width: min(100%, 920px);
+  margin: 0;
+  padding: 20px;
+  overflow: auto;
+  border: 2px solid #7ca667;
+  border-radius: 16px;
+  background: #fffdf3;
+  color: #244a26;
+  font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+}

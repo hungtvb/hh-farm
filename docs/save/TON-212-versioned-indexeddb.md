@@ -40,10 +40,14 @@ src/application/save/
 └── farmSaveRepository.ts        # Save/load/recovery policy
 
 src/infrastructure/save/
-└── indexedDbSaveStorage.ts      # Browser IndexedDB adapter
+└── indexedDbSaveStorage.ts      # Production browser adapter
+
+src/dev/
+├── saveSpikeHarness.ts          # E2E-only scenario UI
+└── indexedDbSaveDiagnostics.ts  # E2E-only raw-slot writer
 ```
 
-Domain code does not import `indexedDB`, `IDBDatabase` or other browser storage APIs.
+Domain code does not import `indexedDB`, `IDBDatabase` or other browser storage APIs. The production adapter exposes only `readSlots`, `commitCurrent` and `clear`; raw corruption helpers remain in the E2E-only module.
 
 ## IndexedDB slots
 
@@ -85,11 +89,19 @@ Migration requirements:
 - idempotent: decoding the migrated v2 envelope again does not migrate a second time;
 - fail-fast: malformed legacy data returns a validation error rather than partial/default state.
 
+## Production diagnostics boundary
+
+Normal `vite build` uses production mode. The `save-spike` route and raw-slot writer are guarded by `import.meta.env.MODE === 'e2e'`, allowing Vite to remove that branch from the production graph.
+
+`npm run check` builds production and scans emitted HTML, JavaScript and CSS. It fails if any diagnostics marker such as the save-spike title, corruption action or raw-slot function name appears in `dist`.
+
+`npm run test:e2e` rebuilds with `vite build --mode e2e` before launching Playwright. This preserves deterministic recovery scenarios without exposing reset/corruption routes in deployable assets.
+
 ## Verification evidence
 
-Exact verified head: `31a6645f61743b3bedbe96e2137716357be026a6`
+Exact verified head: `0b64d91954246ca73a0e93cf112ecfcdccad8d3e`
 
-GitHub Actions run: `30753423793`
+GitHub Actions run: `30753979808`
 
 Automated source gate:
 
@@ -97,9 +109,11 @@ Automated source gate:
 - ESLint with zero warnings: passed.
 - Unit tests: 32 passed.
 - Production build: passed.
+- Production-bundle diagnostics scan: passed; no save diagnostics markers emitted.
 
 Chromium gate:
 
+- Build dedicated E2E assets.
 - Save v2 into a persistent browser profile.
 - Close the entire Chromium persistent context.
 - Reopen Chromium with the same profile.

@@ -9,24 +9,24 @@ import type { FarmSavePayload } from '../../src/domain/save/farmSave';
 const FIXED_DATE = new Date('2026-08-02T12:00:00.000Z');
 
 class MemorySaveStorage implements SaveStorage {
-  public current: unknown | null = null;
-  public previous: unknown | null = null;
+  public current: unknown = null;
+  public previous: unknown = null;
   public unavailable = false;
 
-  public async readSlots(): Promise<SaveSlotSnapshot> {
+  public readSlots(): Promise<SaveSlotSnapshot> {
     if (this.unavailable) {
-      throw new Error('Storage permission denied.');
+      return Promise.reject(new Error('Storage permission denied.'));
     }
 
-    return {
+    return Promise.resolve({
       current: this.current,
       previous: this.previous,
-    };
+    });
   }
 
-  public async commitCurrent(value: unknown): Promise<void> {
+  public commitCurrent(value: unknown): Promise<void> {
     if (this.unavailable) {
-      throw new Error('Storage permission denied.');
+      return Promise.reject(new Error('Storage permission denied.'));
     }
 
     if (this.current !== null) {
@@ -34,11 +34,13 @@ class MemorySaveStorage implements SaveStorage {
     }
 
     this.current = value;
+    return Promise.resolve();
   }
 
-  public async clear(): Promise<void> {
+  public clear(): Promise<void> {
     this.current = null;
     this.previous = null;
+    return Promise.resolve();
   }
 }
 

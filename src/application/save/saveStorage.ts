@@ -1,10 +1,10 @@
 export type SaveSlotSnapshot = Readonly<{
-  current: unknown | null;
-  previous: unknown | null;
+  current: unknown;
+  previous: unknown;
 }>;
 
-export interface SaveStorage {
-  readSlots(): Promise<SaveSlotSnapshot>;
-  commitCurrent(value: unknown): Promise<void>;
-  clear(): Promise<void>;
-}
+export type SaveStorage = Readonly<{
+  readSlots: () => Promise<SaveSlotSnapshot>;
+  commitCurrent: (value: unknown) => Promise<void>;
+  clear: () => Promise<void>;
+}>;

@@ -54,5 +54,5 @@ for (const fileUrl of bundleFiles) {
 }
 
 console.log(
-  `Verified ${bundleFiles.length} production bundle files: save diagnostics are absent.`,
+  `Verified ${String(bundleFiles.length)} production bundle files: save diagnostics are absent.`,
 );

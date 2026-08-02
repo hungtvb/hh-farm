@@ -9,7 +9,7 @@
   },
   "scripts": {
     "generate:maps": "node scripts/generate-farm-map.mjs",
-    "validate:content": "rm -rf node_modules/.tmp/content-validation && tsc -p tsconfig.content-validation.json --pretty false && node node_modules/.tmp/content-validation/scripts/validate-content.js",
+    "validate:content": "tsc -p tsconfig.content-validation.json --pretty false && node node_modules/.tmp/content-validation/scripts/validate-content.js",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

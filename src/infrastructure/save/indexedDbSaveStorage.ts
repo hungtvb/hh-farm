@@ -55,8 +55,11 @@ function defaultIndexedDbFactory(): IDBFactory | null {
   return typeof indexedDB === 'undefined' ? null : indexedDB;
 }
 
-function readUnknown(store: IDBObjectStore, key: string): Promise<unknown> {
-  return requestToPromise(store.get(key) as IDBRequest<unknown>);
+function createUnknownRequest(
+  store: IDBObjectStore,
+  key: string,
+): IDBRequest<unknown> {
+  return store.get(key) as IDBRequest<unknown>;
 }
 
 export class IndexedDbSaveStorage implements SaveStorage {
@@ -78,8 +81,14 @@ export class IndexedDbSaveStorage implements SaveStorage {
       const transaction = database.transaction(STORE_NAME, 'readonly');
       const completed = transactionToPromise(transaction);
       const store = transaction.objectStore(STORE_NAME);
-      const current = await readUnknown(store, CURRENT_KEY);
-      const previous = await readUnknown(store, PREVIOUS_KEY);
+      const currentPromise = requestToPromise(
+        createUnknownRequest(store, CURRENT_KEY),
+      );
+      const previousPromise = requestToPromise(
+        createUnknownRequest(store, PREVIOUS_KEY),
+      );
+      const current = await currentPromise;
+      const previous = await previousPromise;
 
       await completed;
 
@@ -99,13 +108,22 @@ export class IndexedDbSaveStorage implements SaveStorage {
       const transaction = database.transaction(STORE_NAME, 'readwrite');
       const completed = transactionToPromise(transaction);
       const store = transaction.objectStore(STORE_NAME);
-      const current = await readUnknown(store, CURRENT_KEY);
+      const currentRequest = createUnknownRequest(store, CURRENT_KEY);
 
-      if (current !== undefined) {
-        store.put(current, PREVIOUS_KEY);
-      }
+      currentRequest.addEventListener(
+        'success',
+        () => {
+          const current = currentRequest.result;
 
-      store.put(value, CURRENT_KEY);
+          if (current !== undefined) {
+            store.put(current, PREVIOUS_KEY);
+          }
+
+          store.put(value, CURRENT_KEY);
+        },
+        { once: true },
+      );
+
       await completed;
     } finally {
       database.close();

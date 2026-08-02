@@ -78,12 +78,13 @@ function createLookup<T extends Readonly<{ id: string }>>(
 }
 
 export class ContentCatalog {
-  public readonly spriteKeys: ReadonlySet<string>;
+  public readonly spriteKeys: readonly string[];
   public readonly items: readonly ItemDefinition[];
   public readonly crops: readonly CropDefinition[];
   public readonly tools: readonly ToolDefinition[];
   public readonly shopOffers: readonly ShopOffer[];
 
+  private readonly spriteKeySet: ReadonlySet<string>;
   private readonly itemById: ReadonlyMap<string, ItemDefinition>;
   private readonly cropById: ReadonlyMap<string, CropDefinition>;
   private readonly toolById: ReadonlyMap<string, ToolDefinition>;
@@ -92,7 +93,8 @@ export class ContentCatalog {
   public constructor(source: ContentCatalogSource) {
     assertValidContentCatalog(source);
 
-    this.spriteKeys = new Set(source.spriteKeys);
+    this.spriteKeys = Object.freeze([...source.spriteKeys]);
+    this.spriteKeySet = new Set(this.spriteKeys);
     this.items = Object.freeze(source.items.map(cloneItem));
     this.crops = Object.freeze(source.crops.map(cloneCrop));
     this.tools = Object.freeze(source.tools.map(cloneTool));
@@ -101,6 +103,10 @@ export class ContentCatalog {
     this.cropById = createLookup(this.crops);
     this.toolById = createLookup(this.tools);
     this.shopOfferById = createLookup(this.shopOffers);
+  }
+
+  public hasSpriteKey(spriteKey: string): boolean {
+    return this.spriteKeySet.has(spriteKey);
   }
 
   public getItem(id: string): ItemDefinition | undefined {

@@ -4,12 +4,10 @@ import type {
 } from '../../application/save/saveStorage';
 
 export const HH_FARM_SAVE_DATABASE_NAME = 'hh-farm-save';
+export const HH_FARM_SAVE_STORE_NAME = 'save-slots';
+export const HH_FARM_CURRENT_SAVE_KEY = 'current';
+export const HH_FARM_PREVIOUS_SAVE_KEY = 'previous';
 const DATABASE_VERSION = 1;
-const STORE_NAME = 'save-slots';
-const CURRENT_KEY = 'current';
-const PREVIOUS_KEY = 'previous';
-
-export type SaveSlotName = 'current' | 'previous';
 
 export class SaveStorageUnavailableError extends Error {
   public constructor(message = 'IndexedDB is unavailable.') {
@@ -78,14 +76,17 @@ export class IndexedDbSaveStorage implements SaveStorage {
     const database = await this.openDatabase();
 
     try {
-      const transaction = database.transaction(STORE_NAME, 'readonly');
+      const transaction = database.transaction(
+        HH_FARM_SAVE_STORE_NAME,
+        'readonly',
+      );
       const completed = transactionToPromise(transaction);
-      const store = transaction.objectStore(STORE_NAME);
+      const store = transaction.objectStore(HH_FARM_SAVE_STORE_NAME);
       const currentPromise = requestToPromise(
-        createUnknownRequest(store, CURRENT_KEY),
+        createUnknownRequest(store, HH_FARM_CURRENT_SAVE_KEY),
       );
       const previousPromise = requestToPromise(
-        createUnknownRequest(store, PREVIOUS_KEY),
+        createUnknownRequest(store, HH_FARM_PREVIOUS_SAVE_KEY),
       );
       const current = await currentPromise;
       const previous = await previousPromise;
@@ -105,10 +106,16 @@ export class IndexedDbSaveStorage implements SaveStorage {
     const database = await this.openDatabase();
 
     try {
-      const transaction = database.transaction(STORE_NAME, 'readwrite');
+      const transaction = database.transaction(
+        HH_FARM_SAVE_STORE_NAME,
+        'readwrite',
+      );
       const completed = transactionToPromise(transaction);
-      const store = transaction.objectStore(STORE_NAME);
-      const currentRequest = createUnknownRequest(store, CURRENT_KEY);
+      const store = transaction.objectStore(HH_FARM_SAVE_STORE_NAME);
+      const currentRequest = createUnknownRequest(
+        store,
+        HH_FARM_CURRENT_SAVE_KEY,
+      );
 
       currentRequest.addEventListener(
         'success',
@@ -116,10 +123,10 @@ export class IndexedDbSaveStorage implements SaveStorage {
           const current = currentRequest.result;
 
           if (current !== undefined) {
-            store.put(current, PREVIOUS_KEY);
+            store.put(current, HH_FARM_PREVIOUS_SAVE_KEY);
           }
 
-          store.put(value, CURRENT_KEY);
+          store.put(value, HH_FARM_CURRENT_SAVE_KEY);
         },
         { once: true },
       );
@@ -134,34 +141,16 @@ export class IndexedDbSaveStorage implements SaveStorage {
     const database = await this.openDatabase();
 
     try {
-      const transaction = database.transaction(STORE_NAME, 'readwrite');
+      const transaction = database.transaction(
+        HH_FARM_SAVE_STORE_NAME,
+        'readwrite',
+      );
       const completed = transactionToPromise(transaction);
-      transaction.objectStore(STORE_NAME).clear();
+      transaction.objectStore(HH_FARM_SAVE_STORE_NAME).clear();
       await completed;
     } finally {
       database.close();
     }
-  }
-
-  public async writeRawSlotForDiagnostics(
-    slot: SaveSlotName,
-    value: unknown,
-  ): Promise<void> {
-    const database = await this.openDatabase();
-
-    try {
-      const transaction = database.transaction(STORE_NAME, 'readwrite');
-      const completed = transactionToPromise(transaction);
-      transaction.objectStore(STORE_NAME).put(value, slot);
-      await completed;
-    } finally {
-      database.close();
-    }
-  }
-
-  public async deleteDatabase(): Promise<void> {
-    const factory = this.requireFactory();
-    await requestToPromise(factory.deleteDatabase(this.databaseName));
   }
 
   private requireFactory(): IDBFactory {
@@ -179,8 +168,8 @@ export class IndexedDbSaveStorage implements SaveStorage {
     request.addEventListener('upgradeneeded', () => {
       const database = request.result;
 
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
+      if (!database.objectStoreNames.contains(HH_FARM_SAVE_STORE_NAME)) {
+        database.createObjectStore(HH_FARM_SAVE_STORE_NAME);
       }
     });
 

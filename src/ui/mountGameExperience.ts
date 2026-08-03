@@ -15,8 +15,18 @@ import {
   type FarmLoopState,
 } from '../application/farmLoop/farmLoopState.js';
 import { createFarmingContentPort } from '../application/farming/createFarmingContentPort.js';
+import {
+  createTranslator,
+  localeForLanguage,
+  resolveItemLabel,
+  type Translator,
+} from '../application/i18n/gameTranslator.js';
 import { createFarmingInventoryPort } from '../application/inventory/createFarmingInventoryPort.js';
 import { presentPlayerItems } from '../application/inventory/playerItemsPresenter.js';
+import {
+  SettingsRepository,
+  type SettingsStorage,
+} from '../application/settings/settingsRepository.js';
 import { buildInfo } from '../build/buildInfo.js';
 import { gameContentCatalog } from '../data/content/index.js';
 import {
@@ -29,7 +39,17 @@ import {
   selectToolbarSlot,
   type PlayerItemsState,
 } from '../domain/inventory/playerItemsState.js';
+import {
+  isSeedItemUnlocked,
+  requiredLevelForSeedItem,
+} from '../domain/progression/progressionState.js';
+import type { PlayerSettings } from '../domain/settings/playerSettings.js';
 import { IndexedDbSaveStorage } from '../infrastructure/save/indexedDbSaveStorage.js';
+import { LocalStorageSettingsStorage } from '../infrastructure/settings/localStorageSettingsStorage.js';
+import {
+  applyPlayerSettingsToDocument,
+  vibrateForCommittedAction,
+} from './applyPlayerSettings.js';
 import {
   mountFarmLoopUi,
   type FarmLoopUiController,
@@ -38,13 +58,15 @@ import {
   mountGameHud,
   type GameHudController,
 } from './gameHud.js';
-import { resolveVietnameseItemLabel } from './itemLabelsVi.js';
+import { localizeGameHud } from './localizeGameHud.js';
+import { mountSettingsUi, type SettingsUiController } from './settingsUi.js';
 import { mountShopUi, type ShopUiController } from './shopUi.js';
 
 const FARM_LOOP_SAVE_DATABASE_NAME = 'hh-farm-loop-save';
 
 type UiReferences = {
   farmLoop?: FarmLoopUiController;
+  settings?: SettingsUiController;
   shop?: ShopUiController;
 };
 
@@ -54,33 +76,37 @@ export type GameExperienceController = Readonly<{
   getPlayerItemsState: () => PlayerItemsState;
 }>;
 
-function economyFailureCopy(code: EconomyTransactionErrorCode): string {
+function economyFailureCopy(
+  code: EconomyTransactionErrorCode,
+  translate: Translator,
+): string {
   if (code === 'insufficient_funds') {
-    return 'Không đủ xu để hoàn tất giao dịch.';
+    return translate('shop.disabled.insufficient_funds');
   }
   if (code === 'inventory_full') {
-    return 'Túi đồ không còn đủ chỗ.';
+    return translate('failure.inventory_full');
   }
   if (code === 'offer_locked') {
-    return 'Mặt hàng này chưa được mở khóa.';
+    return translate('shop.disabled.offer_locked');
   }
   if (code === 'item_not_owned') {
-    return 'Bạn không có đủ vật phẩm để bán.';
+    return translate('failure.item_not_owned');
   }
   if (code === 'item_not_sellable') {
-    return 'Vật phẩm này không thể bán.';
+    return translate('failure.item_not_sellable');
   }
 
-  return 'Giao dịch không thể hoàn tất.';
+  return translate('failure.transaction_failed');
 }
 
 function describeLoadFailure(
   status: 'unavailable' | 'unrecoverable',
   detail: string,
+  translate: Translator,
 ): string {
   return status === 'unavailable'
-    ? `Không thể mở autosave: ${detail}`
-    : `Không thể phục hồi autosave: ${detail}`;
+    ? translate('load.unavailable', { detail })
+    : translate('load.unrecoverable', { detail });
 }
 
 function createSaveStorage(): IndexedDbSaveStorage {
@@ -88,9 +114,53 @@ function createSaveStorage(): IndexedDbSaveStorage {
   return new IndexedDbSaveStorage(factory, FARM_LOOP_SAVE_DATABASE_NAME);
 }
 
+function createUnavailableSettingsStorage(error: unknown): SettingsStorage {
+  const message = error instanceof Error ? error.message : String(error);
+  return Object.freeze({
+    read: () => {
+      throw new Error(message);
+    },
+    write: () => {
+      throw new Error(message);
+    },
+    remove: () => {
+      throw new Error(message);
+    },
+  });
+}
+
+function createSettingsRepository(): SettingsRepository {
+  try {
+    return new SettingsRepository(
+      new LocalStorageSettingsStorage(window.localStorage),
+    );
+  } catch (error) {
+    return new SettingsRepository(createUnavailableSettingsStorage(error));
+  }
+}
+
+function progressionLockCopy(
+  itemId: string,
+  translate: Translator,
+): string {
+  return translate('shop.disabled.progression_locked', {
+    level: requiredLevelForSeedItem(itemId) ?? 1,
+  });
+}
+
 export async function mountGameExperience(
   appRoot: HTMLElement,
 ): Promise<GameExperienceController> {
+  const settingsRepository = createSettingsRepository();
+  const settingsLoad = settingsRepository.load();
+  let activeSettings: PlayerSettings = settingsLoad.settings;
+  applyPlayerSettingsToDocument(activeSettings);
+
+  const translate = createTranslator(activeSettings.language);
+  const locale = localeForLanguage(activeSettings.language);
+  const resolveLabel = (itemId: string, sourceName: string): string =>
+    resolveItemLabel(activeSettings.language, itemId, sourceName);
+
   const economyCatalog = createEconomyCatalogPort(gameContentCatalog);
   const farmingContent = createFarmingContentPort(gameContentCatalog);
   const farmingInventory = createFarmingInventoryPort();
@@ -105,11 +175,16 @@ export async function mountGameExperience(
   if (loadResult.status === 'loaded' || loadResult.status === 'recovered') {
     initialState = loadResult.state;
   } else if (loadResult.status === 'unavailable') {
-    loadMessage = describeLoadFailure('unavailable', loadResult.error);
+    loadMessage = describeLoadFailure(
+      'unavailable',
+      loadResult.error,
+      translate,
+    );
   } else if (loadResult.status === 'unrecoverable') {
     loadMessage = describeLoadFailure(
       'unrecoverable',
       `${loadResult.currentError} ${loadResult.previousError}`,
+      translate,
     );
   }
 
@@ -130,6 +205,9 @@ export async function mountGameExperience(
       present: (result: FarmLoopResult) => {
         refresh();
         ui.farmLoop?.presentResult(result);
+        if (result.status === 'completed') {
+          vibrateForCommittedAction(activeSettings);
+        }
       },
     }),
   );
@@ -149,7 +227,7 @@ export async function mountGameExperience(
     appRoot,
     {
       day: initialState.farm.day,
-      weatherLabel: 'Nắng đẹp',
+      weatherLabel: translate('app.weatherSunny'),
       coins: initialState.economy.wallet.coins,
       energy: 84,
       energyMax: 100,
@@ -178,6 +256,7 @@ export async function mountGameExperience(
       },
     },
   );
+  localizeGameHud(hud.root, translate);
 
   const handleShopCommit = async (
     action: Extract<FarmLoopExternalAction, 'shop_buy' | 'shop_sell'>,
@@ -185,95 +264,163 @@ export async function mountGameExperience(
     events: Parameters<FarmLoopCoordinator['commitExternal']>[2],
   ): Promise<FarmLoopResult> => coordinator.commitExternal(action, candidate, events);
 
-  ui.shop = mountShopUi(hud.root, {
-    onBeforeOpen: hud.closeInventory,
-    onBuyOffer: (offerId) => {
-      void (async () => {
-        const current = coordinator.getState();
-        const transaction = buyShopOffer(current.economy, economyCatalog, {
-          offerId,
-          purchaseCount: 1,
-          currentDay: current.farm.day,
-        });
-        if (!transaction.ok) {
-          ui.shop?.showFeedback(
-            economyFailureCopy(transaction.error.code),
-            'error',
+  ui.shop = mountShopUi(
+    hud.root,
+    {
+      onBeforeOpen: () => {
+        hud.closeInventory();
+        ui.settings?.close();
+      },
+      onBuyOffer: (offerId) => {
+        void (async () => {
+          const current = coordinator.getState();
+          const offer = economyCatalog
+            .listShopOffers()
+            .find((candidate) => candidate.id === offerId);
+          if (offer === undefined) {
+            ui.shop?.showFeedback(
+              translate('failure.transaction_failed'),
+              'error',
+            );
+            return;
+          }
+          if (!isSeedItemUnlocked(current.progression, offer.itemId)) {
+            ui.shop?.showFeedback(
+              progressionLockCopy(offer.itemId, translate),
+              'error',
+            );
+            return;
+          }
+
+          const transaction = buyShopOffer(current.economy, economyCatalog, {
+            offerId,
+            purchaseCount: 1,
+            currentDay: current.farm.day,
+          });
+          if (!transaction.ok) {
+            ui.shop?.showFeedback(
+              economyFailureCopy(transaction.error.code, translate),
+              'error',
+            );
+            return;
+          }
+
+          const event = transaction.events[0];
+          if (event.type !== 'item-bought') {
+            throw new Error('Buy transaction returned a non-buy event.');
+          }
+
+          const commit = await handleShopCommit(
+            'shop_buy',
+            replaceFarmLoopEconomy(current, transaction.state),
+            transaction.events,
           );
-          return;
-        }
+          if (commit.status !== 'completed') {
+            ui.shop?.showFeedback(commit.message, 'error');
+            return;
+          }
 
-        const event = transaction.events[0];
-        if (event.type !== 'item-bought') {
-          throw new Error('Buy transaction returned a non-buy event.');
-        }
-
-        const commit = await handleShopCommit(
-          'shop_buy',
-          replaceFarmLoopEconomy(current, transaction.state),
-          transaction.events,
-        );
-        if (commit.status !== 'completed') {
-          ui.shop?.showFeedback(commit.message, 'error');
-          return;
-        }
-
-        const item = gameContentCatalog.requireItem(event.itemId);
-        ui.shop?.showFeedback(
-          `Đã mua ${resolveVietnameseItemLabel(item.id, item.displayName)} · -${String(event.cost)} xu`,
-          'success',
-        );
-      })();
-    },
-    onSellItem: (itemId) => {
-      void (async () => {
-        const current = coordinator.getState();
-        const transaction = sellInventoryItem(current.economy, economyCatalog, {
-          itemId,
-          quantity: 1,
-        });
-        if (!transaction.ok) {
+          const item = gameContentCatalog.requireItem(event.itemId);
           ui.shop?.showFeedback(
-            economyFailureCopy(transaction.error.code),
-            'error',
+            translate('shop.feedback.bought', {
+              item: resolveLabel(item.id, item.displayName),
+              coins: event.cost,
+            }),
+            'success',
           );
-          return;
-        }
+        })();
+      },
+      onSellItem: (itemId) => {
+        void (async () => {
+          const current = coordinator.getState();
+          const transaction = sellInventoryItem(current.economy, economyCatalog, {
+            itemId,
+            quantity: 1,
+          });
+          if (!transaction.ok) {
+            ui.shop?.showFeedback(
+              economyFailureCopy(transaction.error.code, translate),
+              'error',
+            );
+            return;
+          }
 
-        const event = transaction.events[0];
-        if (event.type !== 'item-sold') {
-          throw new Error('Sell transaction returned a non-sell event.');
-        }
+          const event = transaction.events[0];
+          if (event.type !== 'item-sold') {
+            throw new Error('Sell transaction returned a non-sell event.');
+          }
 
-        const commit = await handleShopCommit(
-          'shop_sell',
-          replaceFarmLoopEconomy(current, transaction.state),
-          transaction.events,
-        );
-        if (commit.status !== 'completed') {
-          ui.shop?.showFeedback(commit.message, 'error');
-          return;
-        }
+          const commit = await handleShopCommit(
+            'shop_sell',
+            replaceFarmLoopEconomy(current, transaction.state),
+            transaction.events,
+          );
+          if (commit.status !== 'completed') {
+            ui.shop?.showFeedback(commit.message, 'error');
+            return;
+          }
 
-        const item = gameContentCatalog.requireItem(event.itemId);
-        ui.shop?.showFeedback(
-          `Đã bán ${resolveVietnameseItemLabel(item.id, item.displayName)} · +${String(event.revenue)} xu`,
-          'success',
-        );
-      })();
+          const item = gameContentCatalog.requireItem(event.itemId);
+          ui.shop?.showFeedback(
+            translate('shop.feedback.sold', {
+              item: resolveLabel(item.id, item.displayName),
+              coins: event.revenue,
+            }),
+            'success',
+          );
+        })();
+      },
     },
-  });
+    translate,
+    locale,
+  );
 
-  ui.farmLoop = mountFarmLoopUi(hud.root, {
-    onAction: async (action: FarmLoopTutorialAction) => {
-      ui.farmLoop?.setBusy(true);
-      try {
-        await coordinator.perform(action);
-      } finally {
-        ui.farmLoop?.setBusy(false);
-      }
+  ui.farmLoop = mountFarmLoopUi(
+    hud.root,
+    {
+      onAction: async (action: FarmLoopTutorialAction) => {
+        ui.farmLoop?.setBusy(true);
+        try {
+          await coordinator.perform(action);
+        } finally {
+          ui.farmLoop?.setBusy(false);
+        }
+      },
     },
-  });
+    translate,
+    locale,
+  );
+
+  ui.settings = mountSettingsUi(
+    hud.root,
+    activeSettings,
+    translate,
+    {
+      onBeforeOpen: () => {
+        hud.closeInventory();
+        ui.shop?.close();
+      },
+      onSave: async (nextSettings) => {
+        try {
+          settingsRepository.save(nextSettings);
+        } catch (error) {
+          return Object.freeze({
+            status: 'error' as const,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+
+        const reloadRequired =
+          nextSettings.language !== activeSettings.language;
+        activeSettings = nextSettings;
+        applyPlayerSettingsToDocument(activeSettings);
+        if (reloadRequired) {
+          window.setTimeout(() => window.location.reload(), 80);
+        }
+        return Object.freeze({ status: 'saved' as const, reloadRequired });
+      },
+    },
+  );
 
   refresh = (): void => {
     const state = coordinator.getState();
@@ -282,22 +429,29 @@ export async function mountGameExperience(
       presentPlayerItems(
         state.economy.playerItems,
         gameContentCatalog,
-        resolveVietnameseItemLabel,
+        resolveLabel,
       ),
     );
+    localizeGameHud(hud.root, translate);
     ui.shop?.render(
       presentShop(
         state.economy,
         economyCatalog,
         state.farm.day,
-        resolveVietnameseItemLabel,
+        resolveLabel,
+        state.progression,
       ),
     );
-    ui.farmLoop?.render(presentFarmLoop(state, farmingContent));
+    ui.farmLoop?.render(presentFarmLoop(state, farmingContent, translate));
+    ui.settings?.renderProgression(state.progression);
   };
 
   refresh();
-  ui.farmLoop.presentLoadStatus(loadResult.status, loadMessage);
+  const migrated =
+    (loadResult.status === 'loaded' || loadResult.status === 'recovered') &&
+    loadResult.migratedFrom === 1;
+  ui.farmLoop.presentLoadStatus(loadResult.status, loadMessage, migrated);
+  ui.settings.presentLoadStatus(settingsLoad);
 
   return Object.freeze({
     hud,

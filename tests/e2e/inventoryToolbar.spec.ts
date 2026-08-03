@@ -50,7 +50,7 @@ test('opens inventory and binds catalog items with keyboard and pointer', async 
   const toolbarSlotSix = page.locator('.hh-hotbar-slot[data-slot="6"]');
 
   await expect(hud).toBeVisible({ timeout: 10_000 });
-  await expect(hud).toHaveAttribute('data-inventory-items', '5');
+  await expect(hud).toHaveAttribute('data-inventory-items', '3');
   await expect(page.locator('.hh-inventory-slot')).toHaveCount(12);
   await expect(toolbarSlotSix).toHaveAttribute('data-item-id', '');
 
@@ -62,18 +62,18 @@ test('opens inventory and binds catalog items with keyboard and pointer', async 
   await expect(hud).toHaveAttribute('data-inventory-open', 'true');
   await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
 
-  const carrotSeeds = page.locator(
-    '.hh-inventory-slot[data-item-id="seed.carrot"]',
+  const turnipSeeds = page.locator(
+    '.hh-inventory-slot[data-item-id="seed.turnip"]',
   );
-  await expect(carrotSeeds).toBeEnabled();
-  await expect(carrotSeeds).toHaveAttribute('aria-label', /Cà rốt.*ô công cụ 6/);
-  await carrotSeeds.click();
+  await expect(turnipSeeds).toBeEnabled();
+  await expect(turnipSeeds).toHaveAttribute('aria-label', /Củ cải.*ô công cụ 6/);
+  await turnipSeeds.click();
 
-  await expect(toolbarSlotSix).toHaveAttribute('data-item-id', 'seed.carrot');
+  await expect(toolbarSlotSix).toHaveAttribute('data-item-id', 'seed.turnip');
   await expect(toolbarSlotSix.locator('.hh-hotbar-slot__label')).toHaveText(
-    'Cà rốt',
+    'Củ cải',
   );
-  await expect(toolbarSlotSix.locator('.hh-item-quantity')).toHaveText('3');
+  await expect(toolbarSlotSix.locator('.hh-item-quantity')).toHaveText('5');
   await expect(hud).toHaveAttribute('data-selected-slot', '6');
 
   await page.keyboard.press('Escape');

@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { FarmLoopSaveRepository } from '../../src/application/farmLoop/farmLoopSaveRepository.js';
-import { createInitialFarmLoopState } from '../../src/application/farmLoop/farmLoopState.js';
+import {
+  createFarmLoopState,
+  createInitialFarmLoopState,
+  TUTORIAL_TILE_ID,
+} from '../../src/application/farmLoop/farmLoopState.js';
 import type {
   SaveSlotSnapshot,
   SaveStorage,
 } from '../../src/application/save/saveStorage.js';
 import { gameContentCatalog } from '../../src/data/content/index.js';
+import {
+  createUpdatedFarmTile,
+  getFarmTile,
+} from '../../src/domain/farming/farmTileState.js';
 
 const FIXED_DATE = new Date('2026-08-03T03:00:00.000Z');
 
@@ -77,6 +85,40 @@ describe('farm loop save repository', () => {
       unlockedCropIds: ['turnip'],
     });
     expect(result.state.tutorial.step).toBe('till');
+  });
+
+  it('expands a legacy one-tile field while preserving its progress', async () => {
+    const storage = new MemorySaveStorage();
+    const repository = createRepository(storage);
+    const current = createInitialFarmLoopState(gameContentCatalog);
+    const emptyTutorialTile = current.field.tiles[0];
+    if (emptyTutorialTile === undefined) {
+      throw new Error('Initial farm loop must contain the tutorial tile.');
+    }
+    const legacyTutorialTile = createUpdatedFarmTile(emptyTutorialTile, {
+      soil: 'tilled',
+    });
+    const legacyState = createFarmLoopState({
+      farm: current.farm,
+      field: Object.freeze({
+        tiles: Object.freeze([legacyTutorialTile]),
+      }),
+      economy: current.economy,
+      progression: current.progression,
+      tutorial: current.tutorial,
+    });
+
+    await repository.save(legacyState);
+    const result = await repository.load();
+
+    expect(result.status).toBe('loaded');
+    if (result.status !== 'loaded') {
+      throw new Error(`Expected loaded, received ${result.status}.`);
+    }
+    expect(result.state.field.tiles).toHaveLength(15);
+    expect(getFarmTile(result.state.field, TUTORIAL_TILE_ID)?.soil).toBe(
+      'tilled',
+    );
   });
 
   it('migrates a completed v1 loop save to level two progression', async () => {

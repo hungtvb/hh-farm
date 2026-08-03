@@ -9,7 +9,7 @@
   },
   "scripts": {
     "generate:maps": "node scripts/generate-farm-map.mjs",
-    "generate:assets": "node scripts/generate-visual-assets.mjs",
+    "generate:assets": "node scripts/generate-visual-assets.mjs && node scripts/generate-player-assets.mjs",
     "validate:art-pack": "node scripts/validate-art-pack-contract.mjs",
     "validate:assets": "node scripts/validate-visual-assets.mjs",
     "validate:content": "tsc -p tsconfig.content-validation.json --pretty false && node node_modules/.tmp/content-validation/scripts/validate-content.js",

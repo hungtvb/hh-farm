@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-219 — Deliver tutorial, action feedback and end-to-end farm loop`
+`TON-222 — Implement progression, unlocks, settings and VI/EN foundations`
 
-The repository contains a playable autosaved vertical slice: a new player can till, plant, water through real crop-growth days, harvest, sell and reload progress without relying on external instructions.
+The repository contains a playable autosaved vertical slice with deterministic farm progression, carrot/strawberry seed unlocks, persistent accessibility/audio preferences and a typed Vietnamese/English presentation catalog.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ npm run preview
 
 `npm run check` runs generated-output drift checks, asset/content validation, strict type checking and linting, unit tests, the production build, build metadata and production diagnostic exclusion.
 
-`npm run test:e2e` runs two browser phases. Existing technical harnesses and regressions execute on the dedicated E2E bundle; the end-to-end farm loop then rebuilds and executes on the production bundle.
+`npm run test:e2e` runs two browser phases. Existing technical harnesses and regressions execute on the dedicated E2E bundle; the farm-loop, progression and settings flows then rebuild and execute on the production bundle.
 
 ## Architecture
 
@@ -44,30 +44,30 @@ public/assets/
 
 src/
 ├── build/           # Immutable build/deployment identity.
-├── domain/          # Pure farming, inventory, economy, day, tutorial and save rules.
-├── application/     # Coordinators, presenters, use cases and abstract ports.
-├── infrastructure/  # Browser adapters such as IndexedDB.
+├── domain/          # Pure farming, economy, progression, settings and save rules.
+├── application/     # Coordinators, presenters, translators and abstract ports.
+├── infrastructure/  # Browser adapters for IndexedDB and localStorage.
 ├── game/            # Phaser bootstrap, scenes, world and input adapters.
 ├── data/            # Typed content catalogs and map validation.
-└── ui/              # HUD, farm loop, inventory/shop dialogs and responsive layout.
+└── ui/              # HUD, farm loop, settings, inventory/shop and responsive layout.
 ```
 
-Domain and content validation remain isolated from Phaser and browser storage APIs. Application coordinators depend on abstract ports; UI and IndexedDB provide concrete adapters at the edge.
+Domain and content validation remain isolated from Phaser and browser storage APIs. Application coordinators depend on abstract ports; UI, IndexedDB and localStorage provide concrete adapters at the edge.
 
 ## Production farm loop
 
-`FarmLoopState` is the authoritative production aggregate for day, coins, field/crops, inventory, toolbar and tutorial progress. `FarmLoopCoordinator` is the only production write owner.
+`FarmLoopState` is the authoritative production aggregate for day, coins, field/crops, inventory, toolbar, tutorial and progression. `FarmLoopCoordinator` is the only production write owner.
 
 Every farm, toolbar and shop write follows the same order:
 
 ```text
-resolve complete candidate
+resolve complete gameplay + progression candidate
 → autosave candidate
 → commit in memory
 → refresh presentation
 ```
 
-A save failure preserves the previous aggregate. Concurrent writes are rejected while a commit is in progress.
+A save failure preserves the previous aggregate, inventory and XP. Concurrent writes are rejected while a commit is in progress.
 
 The event-driven tutorial guides the player through:
 
@@ -81,9 +81,34 @@ xới đất
 → bán
 ```
 
-The tutorial uses real catalog growth stages and domain events. Invalid actions show a reason instead of silently disabling progress. Skipping changes tutorial metadata only and preserves the starter farm state.
+The tutorial uses real catalog growth stages and domain events. Invalid actions show a reason instead of silently disabling progress. Skipping changes tutorial metadata only and preserves the starter farm and progression state.
 
-Production progress is stored in a dedicated `hh-farm-loop-save` IndexedDB database with `current` and `previous` slots. Reload restores field state, crop progress, wallet, inventory, toolbar and tutorial state. See [TON-219 farm-loop contract](docs/farm-loop/TON-219-end-to-end-farm-loop.md).
+Production progress is stored in a dedicated `hh-farm-loop-save` IndexedDB database with `current` and `previous` slots. Reload restores field state, crop progress, wallet, inventory, toolbar, tutorial and progression. See [TON-219 farm-loop contract](docs/farm-loop/TON-219-end-to-end-farm-loop.md).
+
+## Progression, settings and localization
+
+Farm XP is awarded only from successful committed domain events:
+
+- planting: 10 XP;
+- harvesting: 70 XP;
+- selling produce: 20 XP.
+
+Till, water, day transitions, invalid actions, seed sales and toolbar changes award no XP. A complete first turnip loop reaches 100 XP, level 2 and unlocks carrot seeds. Strawberry seeds unlock at 200 XP / level 3. The shop presenter and production buy path share the same unlock policy, preventing UI-only restrictions.
+
+The starter inventory contains the hoe, watering can and five turnip seeds. Advanced seeds enter the economy only after their progression level is reached and the player buys them.
+
+The farm-loop save schema v2 persists progression and remains compatible with v1 saves. A completed v1 tutorial migrates to level 2; other v1 saves migrate to level 1. Decoded saves are normalized to v2 and report their migration source.
+
+Player preferences use the independent localStorage key `hh-farm:player-settings:v1`:
+
+- Vietnamese or English;
+- music and SFX volume;
+- reduced motion;
+- vibration.
+
+Deleting or starting a new farm does not erase these preferences. The typed string catalog covers the important tutorial, HUD, shop, settings, item and failure copy. Language changes reload the app so every mounted surface uses one translator and locale. The UI uses a Vietnamese-capable system font stack, visible focus, safe-area-aware sheets and minimum 44 × 44 px controls.
+
+See [TON-222 progression, settings and localization contract](docs/progression/TON-222-progression-settings-i18n.md).
 
 ## Wallet and shop economy
 
@@ -91,11 +116,11 @@ Production progress is stored in a dedicated `hh-farm-loop-save` IndexedDB datab
 
 The shop uses the validated content catalog for item identity, stack limits, buy prices, sell prices, offer quantities and unlock days. UI code does not duplicate economic values.
 
-Buy transactions validate the complete cost, unlock day and inventory capacity before debit. Sell transactions validate ownership, sellability and coin-overflow safety before removing items. Selling the final item reuses toolbar cleanup from TON-217.
+Buy transactions validate progression, unlock day, total cost and inventory capacity before debit. Sell transactions validate ownership, sellability and coin-overflow safety before removing items. Selling the final item reuses toolbar cleanup from TON-217.
 
-The shop presenter calls the same transaction engine to derive disabled states such as `insufficient_funds`, `inventory_full` and `offer_locked`. Desktop uses a centered market panel; portrait mobile uses a safe-area-aware scrollable sheet. Live feedback updates coins, inventory and toolbar quantities together.
+The shop presenter derives disabled states such as `progression_locked`, `insufficient_funds`, `inventory_full` and `offer_locked`. Desktop uses a centered market panel; portrait mobile uses a safe-area-aware scrollable sheet. Live feedback updates coins, inventory and toolbar quantities together.
 
-A shop sale emits the same `item-sold` event observed by the tutorial, so selling harvested produce through either surface completes the farm loop. See [TON-218 wallet and shop economy contract](docs/economy/TON-218-shop-economy.md).
+A shop sale emits the same `item-sold` event observed by tutorial and progression, so selling harvested produce through either surface completes the farm loop and awards the same XP. See [TON-218 wallet and shop economy contract](docs/economy/TON-218-shop-economy.md).
 
 ## Inventory and toolbar
 
@@ -110,7 +135,7 @@ Item transactions are atomic:
 - consuming the final item clears every toolbar binding for that item;
 - farming and shop operations share the same inventory-full behavior.
 
-The starting inventory and stack limits come from the validated content catalog. The DOM HUD receives immutable view models, emits select/bind intents and never edits quantities directly. Vietnamese labels are applied at the presentation boundary without changing catalog identity.
+The starting inventory and stack limits come from the validated content catalog. The DOM HUD receives immutable view models, emits select/bind intents and never edits quantities directly. Vietnamese or English labels are applied at the presentation boundary without changing catalog identity.
 
 Controls:
 
@@ -187,11 +212,13 @@ http://localhost:4173/?benchmark=crops&strategy=static
 
 The benchmark renders 300 crops and reports mean FPS, p95 frame time and Long Task count. Automated evidence recommends individual crop Images with event-driven state changes and no per-frame crop update loop. Physical-device targets remain in [TON-210 benchmark report](docs/benchmarks/TON-210-crop-render-memory.md).
 
-## IndexedDB save and recovery
+## Save and recovery
 
-Both the technical save foundation and production farm loop keep `current` and `previous` slots. Invalid current data produces explicit recovered/unrecoverable results rather than silently resetting progress. The production farm loop uses its own database so technical save-spike envelopes cannot be misread as player progress.
+The technical save foundation and production farm loop keep `current` and `previous` slots. Invalid current data produces explicit recovered/unrecoverable results rather than silently resetting progress. The production farm loop uses its own database so technical save-spike envelopes cannot be misread as player progress.
 
-See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md) and [TON-219 farm-loop contract](docs/farm-loop/TON-219-end-to-end-farm-loop.md).
+Farm progress lives in IndexedDB; player settings live in a separately versioned localStorage envelope. Resetting one does not silently reset the other.
+
+See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md), [TON-219 farm-loop contract](docs/farm-loop/TON-219-end-to-end-farm-loop.md) and [TON-222 progression/settings contract](docs/progression/TON-222-progression-settings-i18n.md).
 
 ## Build identity and delivery
 
@@ -201,12 +228,12 @@ After `Verify` succeeds, `Deploy Pages` can publish same-repository pull request
 
 ## Verification
 
-GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, 127 unit tests across 24 files, production build validation and two serialized browser phases:
+GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, 143 unit tests across 27 files, production build validation and two serialized browser phases:
 
 - 13 Chromium regressions on the dedicated E2E bundle;
-- two end-to-end farm-loop tests on the rebuilt production bundle.
+- three production-bundle tests covering the complete farm loop, touch skip and persistent settings/localization.
 
-Browser evidence covers invalid-action feedback, autosaved reload during the loop, real multi-day crop growth, harvest/sale, completed-state recovery, touch tutorial skip, inventory binding, shop economy, player lifecycle, benchmark, day transition, save recovery and responsive composition. Production bundles are scanned to ensure technical diagnostic harnesses are absent.
+Browser evidence covers invalid-action feedback, XP/unlock boundaries, autosaved reload during the loop, real multi-day crop growth, harvest/sale, completed-state recovery, touch tutorial skip, VI→EN reload, reduced motion, 44 px touch targets, farm reset with settings retention, inventory binding, shop economy, player lifecycle, benchmark, day transition, save recovery and responsive composition. Production bundles are scanned to ensure technical diagnostic harnesses are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production loading budgets are tracked by `TON-224`.
 

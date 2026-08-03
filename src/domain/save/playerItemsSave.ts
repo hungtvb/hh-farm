@@ -23,17 +23,23 @@ function isRecord(value: unknown): value is UnknownRecord {
 function decodeInventorySlot(
   value: unknown,
   index: number,
-): InventorySlot | string {
+): Readonly<{ ok: true; slot: InventorySlot }> | Readonly<{ ok: false; error: string }> {
   if (value === null) {
-    return null;
+    return { ok: true, slot: null };
   }
 
   if (!isRecord(value)) {
-    return `Inventory slot ${String(index)} must be null or an object.`;
+    return {
+      ok: false,
+      error: `Inventory slot ${String(index)} must be null or an object.`,
+    };
   }
 
   if (typeof value.itemId !== 'string' || value.itemId.trim().length === 0) {
-    return `Inventory slot ${String(index)} itemId must be a non-empty string.`;
+    return {
+      ok: false,
+      error: `Inventory slot ${String(index)} itemId must be a non-empty string.`,
+    };
   }
 
   if (
@@ -41,28 +47,39 @@ function decodeInventorySlot(
     !Number.isSafeInteger(value.quantity) ||
     value.quantity < 1
   ) {
-    return `Inventory slot ${String(index)} quantity must be a positive safe integer.`;
+    return {
+      ok: false,
+      error: `Inventory slot ${String(index)} quantity must be a positive safe integer.`,
+    };
   }
 
-  return Object.freeze({
-    itemId: value.itemId.trim(),
-    quantity: value.quantity,
-  });
+  return {
+    ok: true,
+    slot: Object.freeze({
+      itemId: value.itemId.trim(),
+      quantity: value.quantity,
+    }),
+  };
 }
 
 function decodeToolbarBinding(
   value: unknown,
   index: number,
-): ToolbarBinding | string {
+):
+  | Readonly<{ ok: true; binding: ToolbarBinding }>
+  | Readonly<{ ok: false; error: string }> {
   if (value === null) {
-    return null;
+    return { ok: true, binding: null };
   }
 
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return `Toolbar binding ${String(index)} must be null or a non-empty string.`;
+    return {
+      ok: false,
+      error: `Toolbar binding ${String(index)} must be null or a non-empty string.`,
+    };
   }
 
-  return value.trim();
+  return { ok: true, binding: value.trim() };
 }
 
 export function decodePlayerItems(value: unknown): DecodePlayerItemsResult {
@@ -106,20 +123,20 @@ export function decodePlayerItems(value: unknown): DecodePlayerItemsResult {
 
   const inventorySlots: InventorySlot[] = [];
   for (const [index, slotValue] of value.inventorySlots.entries()) {
-    const slot = decodeInventorySlot(slotValue, index);
-    if (typeof slot === 'string') {
-      return { ok: false, error: slot };
+    const decoded = decodeInventorySlot(slotValue, index);
+    if (!decoded.ok) {
+      return decoded;
     }
-    inventorySlots.push(slot);
+    inventorySlots.push(decoded.slot);
   }
 
   const toolbarBindings: ToolbarBinding[] = [];
   for (const [index, bindingValue] of value.toolbarBindings.entries()) {
-    const binding = decodeToolbarBinding(bindingValue, index);
-    if (typeof binding === 'string' && bindingValue !== binding) {
-      return { ok: false, error: binding };
+    const decoded = decodeToolbarBinding(bindingValue, index);
+    if (!decoded.ok) {
+      return decoded;
     }
-    toolbarBindings.push(binding as ToolbarBinding);
+    toolbarBindings.push(decoded.binding);
   }
 
   try {

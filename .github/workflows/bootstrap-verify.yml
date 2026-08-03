@@ -17,8 +17,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout
+      - name: Checkout exact production source
         uses: actions/checkout@v6
+        with:
+          ref: 641671a096fa9b7944276c6512caf203e36297f6
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -44,6 +46,14 @@ jobs:
 
       - name: Run browser smoke
         run: npm run test:e2e
+
+      - name: Upload production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-dist-main-641671a
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload browser evidence
         if: ${{ always() }}

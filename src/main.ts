@@ -2,6 +2,7 @@ import './styles.css';
 import './ui/mobileLayout.css';
 import './ui/inventoryUi.css';
 import './ui/shopUi.css';
+import './ui/farmLoopUi.css';
 import { exposeBuildInfo } from './build/buildInfo';
 import { mountGameExperience } from './ui/mountGameExperience';
 
@@ -22,7 +23,7 @@ async function bootstrap(): Promise<void> {
     throw new Error('Missing #app root for HH Farm.');
   }
 
-  const experience = mountGameExperience(appRoot);
+  const experience = await mountGameExperience(appRoot);
 
   if (e2eEnabled && params.has('day-spike')) {
     const { runDayTransitionHarness } = await import(

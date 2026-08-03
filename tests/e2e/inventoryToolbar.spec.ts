@@ -43,6 +43,10 @@ test('opens inventory and binds catalog items with keyboard and pointer', async 
 
   const hud = page.locator('.game-hud[data-ready="true"]');
   const modal = page.getByRole('dialog', { name: 'Túi đồ nông trại' });
+  const inventoryToggle = page.getByRole('button', {
+    name: 'Túi đồ',
+    exact: true,
+  });
   const toolbarSlotSix = page.locator('.hh-hotbar-slot[data-slot="6"]');
 
   await expect(hud).toBeVisible({ timeout: 10_000 });
@@ -53,13 +57,10 @@ test('opens inventory and binds catalog items with keyboard and pointer', async 
   await page.keyboard.press('6');
   await expect(hud).toHaveAttribute('data-selected-slot', '6');
 
-  await page.getByRole('button', { name: 'Túi đồ' }).click();
+  await inventoryToggle.click();
   await expect(modal).toBeVisible();
   await expect(hud).toHaveAttribute('data-inventory-open', 'true');
-  await expect(page.getByRole('button', { name: 'Túi đồ' })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  );
+  await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
 
   const carrotSeeds = page.locator(
     '.hh-inventory-slot[data-item-id="seed.carrot"]',
@@ -106,13 +107,17 @@ test.describe('touch inventory interaction', () => {
 
     const hud = page.locator('.game-hud[data-ready="true"]');
     const modal = page.getByRole('dialog', { name: 'Túi đồ nông trại' });
+    const inventoryToggle = page.getByRole('button', {
+      name: 'Túi đồ',
+      exact: true,
+    });
     const toolbarSlotEight = page.locator('.hh-hotbar-slot[data-slot="8"]');
 
     await expect(hud).toBeVisible({ timeout: 10_000 });
     await toolbarSlotEight.tap();
     await expect(hud).toHaveAttribute('data-selected-slot', '8');
 
-    await page.getByRole('button', { name: 'Túi đồ' }).tap();
+    await inventoryToggle.tap();
     await expect(modal).toBeVisible();
     await expectInsideViewport(modal, 390, 844);
 

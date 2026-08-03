@@ -373,7 +373,7 @@ export class FarmScene extends Phaser.Scene {
     canvas.dataset.worldTapPointerId = String(pointer.id);
     canvas.dataset.worldTapTargetId = target.id;
     canvas.dataset.worldTapTargetKind = target.kind;
-    void this.queueDirectInteraction(target);
+    this.queueDirectInteraction(target);
   }
 
   private queueDirectInteraction(target: WorldInteractionTarget): void {
@@ -446,8 +446,7 @@ export class FarmScene extends Phaser.Scene {
     const pending = this.directIntent;
     const player = this.playerController;
     if (
-      pending === undefined ||
-      pending.token !== token ||
+      pending?.token !== token ||
       player === undefined ||
       this.actionPending
     ) {

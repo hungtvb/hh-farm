@@ -128,7 +128,6 @@ export function mountFarmLoopUi(
   const soil = createElement('span', 'hh-farm-loop__soil');
   const crop = createElement('span', 'hh-farm-loop__crop');
   const water = createElement('span', 'hh-farm-loop__water');
-  water.textContent = '💧';
   water.setAttribute('aria-hidden', 'true');
   const highlight = createElement('span', 'hh-farm-loop__highlight');
   highlight.setAttribute('aria-hidden', 'true');

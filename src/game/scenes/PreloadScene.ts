@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { preloadVisualAssets } from '../assets/visualAssets';
 import { preloadFarmWorld } from '../world/farmWorld';
 
 function getTargetSceneKey(): string {
@@ -16,6 +17,7 @@ export class PreloadScene extends Phaser.Scene {
 
   public preload(): void {
     preloadFarmWorld(this);
+    preloadVisualAssets(this);
   }
 
   public create(): void {

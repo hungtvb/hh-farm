@@ -1,0 +1,54 @@
+name: ChatGPT Apply TON-220 Slice B
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton220-slice-b.yml
+      - .github/chatgpt/ton220-slice-b.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decode and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/chatgpt/ton220-slice-b.patch.gz.b64 > "$RUNNER_TEMP/ton220.patch.gz"
+          test "$(sha256sum "$RUNNER_TEMP/ton220.patch.gz" | awk '{print $1}')" = "6cc4f7e9fcdff08db87f06d1b36de6242c137188e5d91e92dae02c76be54031f"
+          gzip -dc "$RUNNER_TEMP/ton220.patch.gz" > "$RUNNER_TEMP/ton220.patch"
+          test "$(sha256sum "$RUNNER_TEMP/ton220.patch" | awk '{print $1}')" = "e5be285b96df7879efff07ad17695fe0bee1883e3b5f927ee0610889b931220a"
+      - name: Build exact rescued merge tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
+          old_head="28474aef0bfacf45413a9c49642263d4bfd47198"
+          main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git fetch origin "$feature_ref" refs/heads/main
+          test "$(git rev-parse FETCH_HEAD)" != ""
+          test "$(git rev-parse "origin/feat/ton-220-vertical-slice-art-pack")" = "$old_head"
+          test "$(git rev-parse origin/main)" = "$main_head"
+          git checkout --detach "$old_head"
+          git merge --no-commit --no-ff "$main_head"
+          git apply --index "$RUNNER_TEMP/ton220.patch"
+          test "$(git write-tree)" = "4f5e90f4b972aa184004e65187ed59451bbefc3e"
+      - name: Publish rescued TON-220 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
+          git commit -m "feat: complete TON-220 generated player source pack (#33)"
+          test "$(git rev-parse HEAD^{tree})" = "4f5e90f4b972aa184004e65187ed59451bbefc3e"
+          git push --force-with-lease=refs/heads/feat/ton-220-vertical-slice-art-pack:28474aef0bfacf45413a9c49642263d4bfd47198 origin HEAD:refs/heads/feat/ton-220-vertical-slice-art-pack

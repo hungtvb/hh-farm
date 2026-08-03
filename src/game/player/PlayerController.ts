@@ -48,8 +48,8 @@ type ActiveAutoMove = Readonly<{
   facingOnArrival: FacingDirection;
   arrivalThreshold: number;
   timeoutMs: number;
-  onArrive?: () => void;
-  onCancel?: (reason: PlayerAutoMoveCancelReason) => void;
+  onArrive: (() => void) | undefined;
+  onCancel: ((reason: PlayerAutoMoveCancelReason) => void) | undefined;
 }> & {
   elapsedMs: number;
 };

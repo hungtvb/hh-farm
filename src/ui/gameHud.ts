@@ -1,7 +1,6 @@
 import type {
   ItemSlotViewModel,
   PlayerItemsViewModel,
-  ToolbarSlotViewModel,
 } from '../application/inventory/playerItemsPresenter.js';
 import { applyVisualSystem, getVisualAssetUrl } from './visualSystem';
 
@@ -441,6 +440,9 @@ export function mountGameHud(
 
   const renderPlayerItems = (view: PlayerItemsViewModel): void => {
     currentPlayerItemsView = view;
+    const selectedSlotIndex =
+      view.toolbarSlots.find((slot) => slot.selected)?.slotIndex ?? 0;
+    const selectedSlotNumber = selectedSlotIndex + 1;
 
     for (const toolbarSlot of view.toolbarSlots) {
       const button = toolbarButtons[toolbarSlot.slotIndex];
@@ -458,6 +460,7 @@ export function mountGameHud(
       }
 
       button.replaceChildren();
+      button.onclick = null;
       const item = inventorySlot.item;
       if (item === null) {
         const empty = createElement('span', 'hh-inventory-slot__empty');
@@ -483,15 +486,14 @@ export function mountGameHud(
       button.disabled = false;
       button.setAttribute(
         'aria-label',
-        `${item.displayName}, số lượng ${String(item.quantity)}. Gán vào ô công cụ ${String(view.toolbarSlots.find((slot) => slot.selected)?.slotIndex ?? 0 + 1)}.`,
+        `${item.displayName}, số lượng ${String(item.quantity)}. Gán vào ô công cụ ${String(selectedSlotNumber)}.`,
       );
       button.onclick = () => {
         actions.onBindInventoryItem?.(item.itemId);
       };
     }
 
-    const selectedSlot = view.toolbarSlots.find((slot) => slot.selected);
-    applySelectedSlot(selectedSlot?.slotIndex ?? 0);
+    applySelectedSlot(selectedSlotIndex);
     root.dataset.inventoryItems = String(
       view.inventorySlots.filter((slot) => slot.item !== null).length,
     );

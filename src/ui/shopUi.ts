@@ -4,6 +4,7 @@ import type {
   ShopOfferViewModel,
   ShopViewModel,
 } from '../application/economy/shopPresenter.js';
+import type { Translator } from '../application/i18n/gameTranslator.js';
 import { getVisualAssetUrl } from './visualSystem.js';
 
 export type ShopUiActions = Readonly<{
@@ -109,26 +110,32 @@ function createItemIcon(
   return image;
 }
 
-function buyDisabledCopy(reason: ShopOfferDisabledReason): string {
-  if (reason === 'insufficient_funds') {
-    return 'Không đủ xu';
+function buyDisabledCopy(
+  reason: ShopOfferDisabledReason,
+  requiredLevel: 1 | 2 | 3 | null,
+  translate: Translator,
+): string {
+  if (reason === 'progression_locked') {
+    return translate('shop.disabled.progression_locked', {
+      level: requiredLevel ?? 1,
+    });
   }
-  if (reason === 'inventory_full') {
-    return 'Túi đồ đã đầy';
-  }
-
-  return 'Chưa mở khóa';
+  return translate(`shop.disabled.${reason}`);
 }
 
 function createOfferButton(
   offer: ShopOfferViewModel,
   onBuyOffer: ShopUiActions['onBuyOffer'],
+  translate: Translator,
+  locale: string,
 ): HTMLButtonElement {
   const button = createElement('button', 'hh-shop-card hh-shop-card--buy');
   button.type = 'button';
   button.dataset.offerId = offer.offerId;
   button.dataset.itemId = offer.itemId;
   button.dataset.disabledReason = offer.disabledReason ?? '';
+  button.dataset.requiredLevel =
+    offer.requiredLevel === null ? '' : String(offer.requiredLevel);
   button.disabled = offer.disabled;
 
   const icon = createElement('span', 'hh-shop-card__icon');
@@ -137,23 +144,40 @@ function createOfferButton(
   const name = createElement('strong', 'hh-shop-card__name');
   name.textContent = offer.displayName;
   const detail = createElement('span', 'hh-shop-card__detail');
-  detail.textContent = `Nhận ${String(offer.quantity)} · Mở ngày ${String(offer.unlockDay)}`;
+  detail.textContent = translate('shop.receiveUnlock', {
+    quantity: offer.quantity,
+    day: offer.unlockDay,
+  });
   copy.append(name, detail);
 
   const price = createElement('span', 'hh-shop-card__price');
-  price.textContent = `${offer.buyPrice.toLocaleString('vi-VN')} xu`;
+  price.textContent = translate('shop.price', {
+    price: offer.buyPrice.toLocaleString(locale),
+  });
   const status = createElement('span', 'hh-shop-card__status');
-  status.textContent =
+  const disabledCopy =
     offer.disabledReason === null
-      ? 'Mua'
-      : buyDisabledCopy(offer.disabledReason);
+      ? null
+      : buyDisabledCopy(
+          offer.disabledReason,
+          offer.requiredLevel,
+          translate,
+        );
+  status.textContent = disabledCopy ?? translate('shop.buy');
 
   button.append(icon, copy, price, status);
   button.setAttribute(
     'aria-label',
-    offer.disabledReason === null
-      ? `Mua ${offer.displayName}, số lượng ${String(offer.quantity)}, giá ${String(offer.buyPrice)} xu`
-      : `${offer.displayName}: ${buyDisabledCopy(offer.disabledReason)}`,
+    disabledCopy === null
+      ? translate('shop.buyAria', {
+          item: offer.displayName,
+          quantity: offer.quantity,
+          price: offer.buyPrice,
+        })
+      : translate('shop.disabledAria', {
+          item: offer.displayName,
+          reason: disabledCopy,
+        }),
   );
   button.addEventListener('click', () => {
     onBuyOffer?.(offer.offerId);
@@ -164,6 +188,8 @@ function createOfferButton(
 function createSellButton(
   item: SellItemViewModel,
   onSellItem: ShopUiActions['onSellItem'],
+  translate: Translator,
+  locale: string,
 ): HTMLButtonElement {
   const button = createElement('button', 'hh-shop-card hh-shop-card--sell');
   button.type = 'button';
@@ -177,20 +203,27 @@ function createSellButton(
   const name = createElement('strong', 'hh-shop-card__name');
   name.textContent = item.displayName;
   const detail = createElement('span', 'hh-shop-card__detail');
-  detail.textContent = `Đang có ${String(item.quantity)}`;
+  detail.textContent = translate('shop.owned', { quantity: item.quantity });
   copy.append(name, detail);
 
   const price = createElement('span', 'hh-shop-card__price');
-  price.textContent = `${item.sellPrice.toLocaleString('vi-VN')} xu`;
+  price.textContent = translate('shop.price', {
+    price: item.sellPrice.toLocaleString(locale),
+  });
   const status = createElement('span', 'hh-shop-card__status');
-  status.textContent = item.disabled ? 'Không thể bán' : 'Bán 1';
+  status.textContent = item.disabled
+    ? translate('shop.cannotSell')
+    : translate('shop.sellOne');
 
   button.append(icon, copy, price, status);
   button.setAttribute(
     'aria-label',
     item.disabled
-      ? `${item.displayName}: không thể bán`
-      : `Bán một ${item.displayName}, nhận ${String(item.sellPrice)} xu`,
+      ? translate('shop.cannotSellAria', { item: item.displayName })
+      : translate('shop.sellAria', {
+          item: item.displayName,
+          price: item.sellPrice,
+        }),
   );
   button.addEventListener('click', () => {
     onSellItem?.(item.itemId);
@@ -213,7 +246,9 @@ function requireHtmlElement(
 
 export function mountShopUi(
   hudRoot: HTMLElement,
-  actions: ShopUiActions = {},
+  actions: ShopUiActions,
+  translate: Translator,
+  locale: string,
 ): ShopUiController {
   hudRoot.querySelector('.hh-shop-modal')?.remove();
   hudRoot.querySelector('.hh-shop-toggle')?.remove();
@@ -231,7 +266,7 @@ export function mountShopUi(
 
   const toggle = createElement('button', 'hh-shop-toggle');
   toggle.type = 'button';
-  toggle.textContent = 'Cửa hàng';
+  toggle.textContent = translate('shop.toggle');
   toggle.setAttribute('aria-expanded', 'false');
   toggle.setAttribute('aria-controls', 'hh-shop-modal');
   resourceGroup.append(toggle);
@@ -246,18 +281,18 @@ export function mountShopUi(
   const header = createElement('header', 'hh-shop-modal__header');
   const heading = createElement('div', 'hh-shop-modal__heading');
   const eyebrow = createElement('span', 'hh-shop-modal__eyebrow');
-  eyebrow.textContent = 'CHỢ NÔNG TRẠI';
+  eyebrow.textContent = translate('shop.eyebrow');
   const title = createElement('h2', 'hh-shop-modal__title');
   title.id = 'hh-shop-title';
-  title.textContent = 'Cửa hàng hạt giống';
+  title.textContent = translate('shop.title');
   const hint = createElement('p', 'hh-shop-modal__hint');
-  hint.textContent = 'Mua hạt giống và bán vật phẩm trong túi.';
+  hint.textContent = translate('shop.hint');
   heading.append(eyebrow, title, hint);
 
   const closeButton = createElement('button', 'hh-shop-modal__close');
   closeButton.type = 'button';
-  closeButton.textContent = 'Đóng';
-  closeButton.setAttribute('aria-label', 'Đóng cửa hàng');
+  closeButton.textContent = translate('common.close');
+  closeButton.setAttribute('aria-label', translate('shop.closeLabel'));
   header.append(heading, closeButton);
 
   const feedback = createElement('div', 'hh-shop-feedback');
@@ -267,14 +302,14 @@ export function mountShopUi(
 
   const buySection = createElement('section', 'hh-shop-section');
   const buyTitle = createElement('h3', 'hh-shop-section__title');
-  buyTitle.textContent = 'Mua hạt giống';
+  buyTitle.textContent = translate('shop.buySection');
   const buyGrid = createElement('div', 'hh-shop-grid');
   buyGrid.dataset.shopBuyList = 'true';
   buySection.append(buyTitle, buyGrid);
 
   const sellSection = createElement('section', 'hh-shop-section');
   const sellTitle = createElement('h3', 'hh-shop-section__title');
-  sellTitle.textContent = 'Bán từ túi đồ';
+  sellTitle.textContent = translate('shop.sellSection');
   const sellGrid = createElement('div', 'hh-shop-grid');
   sellGrid.dataset.shopSellList = 'true';
   sellSection.append(sellTitle, sellGrid);
@@ -307,18 +342,18 @@ export function mountShopUi(
   };
 
   const render = (view: ShopViewModel): void => {
-    coinValue.textContent = view.coins.toLocaleString('vi-VN');
+    coinValue.textContent = view.coins.toLocaleString(locale);
     hudRoot.dataset.coins = String(view.coins);
     root.dataset.day = String(view.currentDay);
 
     buyGrid.replaceChildren(
       ...view.offers.map((offer) =>
-        createOfferButton(offer, actions.onBuyOffer),
+        createOfferButton(offer, actions.onBuyOffer, translate, locale),
       ),
     );
     sellGrid.replaceChildren(
       ...view.inventory.map((item) =>
-        createSellButton(item, actions.onSellItem),
+        createSellButton(item, actions.onSellItem, translate, locale),
       ),
     );
     root.dataset.offerCount = String(view.offers.length);

@@ -20,7 +20,8 @@ async function deleteFarmSave(page: Page): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const request = indexedDB.deleteDatabase('hh-farm-loop-save');
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(request.error ?? new Error('Failed to delete farm save.'));
       request.onblocked = () => resolve();
     });
   });
@@ -69,12 +70,9 @@ test.describe('@production-loop persistent settings and localization', () => {
     await page.locator('#hh-settings-sfx').fill('45');
     await page.locator('#hh-settings-reduced-motion').check();
     await page.locator('#hh-settings-vibration').uncheck();
+    await page.locator('.hh-settings-save').click();
 
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-      page.locator('.hh-settings-save').click(),
-    ]);
-
+    await expect(settings).toBeHidden({ timeout: 10_000 });
     await expect(page.locator('.game-hud[data-ready="true"]')).toBeVisible({
       timeout: 10_000,
     });

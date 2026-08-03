@@ -16,6 +16,7 @@ import {
   createUpdatedFarmTile,
   getFarmTile,
   replaceFarmTile,
+  requireFarmTile,
 } from '../../src/domain/farming/farmTileState.js';
 
 describe('starter farm grid', () => {
@@ -48,10 +49,7 @@ describe('starter farm grid', () => {
     const legacyField = createFarmField([
       Object.freeze({ id: TUTORIAL_TILE_ID, x: 0, y: 0 }),
     ]);
-    const emptyTutorialTile = legacyField.tiles[0];
-    if (emptyTutorialTile === undefined) {
-      throw new Error('Legacy field must contain the tutorial tile.');
-    }
+    const emptyTutorialTile = requireFarmTile(legacyField, TUTORIAL_TILE_ID);
     const legacyTutorialTile = createUpdatedFarmTile(emptyTutorialTile, {
       soil: 'tilled',
     });

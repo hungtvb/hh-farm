@@ -9,6 +9,11 @@ import {
   getFarmTile,
   type FarmTileState,
 } from '../../domain/farming/farmTileState';
+import {
+  requiredInteractionKind,
+  resolveWorldInteractionTarget,
+  type WorldInteractionTarget,
+} from '../../domain/world/worldInteractionTarget';
 import { VISUAL_TEXTURE_KEYS } from '../assets/visualAssets';
 import { createPlayerTextures } from '../player/createPlayerTextures';
 import { createPlayerCollisionWorld } from '../player/collisionWorld';
@@ -19,11 +24,6 @@ import {
   type FarmGameRuntime,
 } from '../runtime/farmGameRuntime';
 import { createFarmWorld, FARM_MAP_KEY } from '../world/farmWorld';
-import {
-  requiredInteractionKind,
-  resolveWorldInteractionTarget,
-  type WorldInteractionTarget,
-} from '../world/worldInteractionTarget';
 
 const ACTION_KEY_CODES = [
   Phaser.Input.Keyboard.KeyCodes.E,
@@ -279,9 +279,14 @@ export class FarmScene extends Phaser.Scene {
     const image = this.add
       .image(target.x, target.y, textureKey)
       .setDisplaySize(64, 64)
+      .setOrigin(0.5, 1)
       .setDepth(target.y + 1);
     const selection = this.add
-      .image(target.x, target.y, VISUAL_TEXTURE_KEYS.selectionCursor)
+      .image(
+        target.x,
+        target.y - 32,
+        VISUAL_TEXTURE_KEYS.selectionCursor,
+      )
       .setDisplaySize(70, 70)
       .setAlpha(0.16)
       .setDepth(target.y + 2);
@@ -428,8 +433,9 @@ export class FarmScene extends Phaser.Scene {
       requiredInteractionKind(action) === target.kind;
     this.actionHint?.setVisible(actionReady);
     if (target !== undefined) {
+      const hintOffset = target.kind === 'farm_tile' ? 46 : 78;
       this.actionHint
-        ?.setPosition(target.x, target.y - 46)
+        ?.setPosition(target.x, target.y - hintOffset)
         .setDepth(target.y + 3);
     }
 

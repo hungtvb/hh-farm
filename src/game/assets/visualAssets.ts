@@ -5,10 +5,12 @@ export const VISUAL_TEXTURE_KEYS = Object.freeze({
   soilTilled: 'visual-soil-tilled',
   soilWatered: 'visual-soil-watered',
   selectionCursor: 'visual-selection-cursor',
+  cropTurnipStages: 'visual-crop-turnip-stages',
 });
 
 const GENERATED_ASSET_BASE = '/assets/generated';
 const SVG_SIZE = Object.freeze({ width: 64, height: 64 });
+const CROP_STAGE_SHEET_SIZE = Object.freeze({ width: 256, height: 64 });
 
 export function preloadVisualAssets(scene: Phaser.Scene): void {
   scene.load.svg(
@@ -30,5 +32,10 @@ export function preloadVisualAssets(scene: Phaser.Scene): void {
     VISUAL_TEXTURE_KEYS.selectionCursor,
     `${GENERATED_ASSET_BASE}/selection-cursor.svg`,
     SVG_SIZE,
+  );
+  scene.load.svg(
+    VISUAL_TEXTURE_KEYS.cropTurnipStages,
+    `${GENERATED_ASSET_BASE}/crop-turnip.svg`,
+    CROP_STAGE_SHEET_SIZE,
   );
 }

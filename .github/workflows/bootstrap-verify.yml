@@ -29,20 +29,50 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Build exact production bundle
-        run: npm run build && npm run verify:production-bundle
+      - name: Build exact production bundle from a clean output directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          npm run build
+          npm run verify:production-bundle
         env:
           HH_FARM_GIT_SHA: 641671a096fa9b7944276c6512caf203e36297f6
           HH_FARM_GIT_REF: main
           HH_FARM_DEPLOYMENT_ENVIRONMENT: production
           HH_FARM_DEPLOYMENT_URL: https://hh-farm.vercel.app
 
+      - name: Verify every HTML entry reference exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const html = fs.readFileSync('dist/index.html', 'utf8');
+          const references = [...html.matchAll(/(?:src|href)="\/([^"]+)"/g)].map((match) => match[1]);
+
+          if (references.length === 0) {
+            throw new Error('dist/index.html contains no root-relative runtime references.');
+          }
+
+          for (const reference of references) {
+            const target = path.join('dist', reference);
+            if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
+              throw new Error(`Missing runtime reference: ${reference}`);
+            }
+          }
+
+          console.log(`Verified ${references.length} HTML runtime references: ${references.join(', ')}`);
+          NODE
+
       - name: Package immutable runtime
         shell: bash
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/hh-farm-runtime.tar.gz"
-          tar --exclude='*.map' -C dist -czf "$archive" .
+          tar --format=ustar --exclude='*.map' -C dist -czf "$archive" .
           sha256sum "$archive" | tee "$RUNNER_TEMP/hh-farm-runtime.tar.gz.sha256"
           cat > "$RUNNER_TEMP/runtime-manifest.json" <<'JSON'
           {

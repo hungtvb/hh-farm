@@ -1,3 +1,8 @@
+import {
+  farmActionLabel,
+  farmStepCopy,
+  type Translator,
+} from '../i18n/gameTranslator.js';
 import type { FarmingContentPort } from '../../domain/farming/farmingPorts.js';
 import { getFarmTile } from '../../domain/farming/farmTileState.js';
 import { countInventoryItem } from '../../domain/inventory/inventoryState.js';
@@ -34,50 +39,15 @@ export type FarmLoopViewModel = Readonly<{
   actions: readonly FarmLoopActionViewModel[];
 }>;
 
-const ACTION_LABELS: Readonly<
-  Record<FarmLoopTutorialAction, string>
-> = Object.freeze({
-  till: 'Xới đất',
-  plant: 'Gieo củ cải',
-  water: 'Tưới cây',
-  next_day: 'Ngủ qua ngày',
-  harvest: 'Thu hoạch',
-  sell: 'Bán củ cải',
-  skip_tutorial: 'Bỏ qua hướng dẫn',
-});
-
-const STEP_COPY: Readonly<
-  Record<TutorialStep, Readonly<{ title: string; hint: string }>>
-> = Object.freeze({
-  till: Object.freeze({
-    title: 'Xới ô đất được đánh dấu',
-    hint: 'Bắt đầu bằng cách chuẩn bị đất trồng.',
-  }),
-  plant: Object.freeze({
-    title: 'Gieo một hạt củ cải',
-    hint: 'Hạt giống được lấy từ túi đồ thật.',
-  }),
-  water: Object.freeze({
-    title: 'Tưới cây trước khi ngủ',
-    hint: 'Cây chỉ tăng trưởng qua ngày khi đã được tưới.',
-  }),
-  next_day: Object.freeze({
-    title: 'Ngủ qua ngày',
-    hint: 'Tiến độ được autosave trước khi ngày mới được commit.',
-  }),
-  harvest: Object.freeze({
-    title: 'Thu hoạch củ cải đã chín',
-    hint: 'Sản lượng sẽ được thêm nguyên tử vào túi đồ.',
-  }),
-  sell: Object.freeze({
-    title: 'Bán một củ cải',
-    hint: 'Wallet và inventory sẽ commit cùng một giao dịch.',
-  }),
-  completed: Object.freeze({
-    title: 'Vòng lặp nông trại đã hoàn thành',
-    hint: 'Bạn đã xới, gieo, tưới, thu hoạch và bán thành công.',
-  }),
-});
+const FARM_ACTIONS: readonly FarmLoopTutorialAction[] = Object.freeze([
+  'till',
+  'plant',
+  'water',
+  'next_day',
+  'harvest',
+  'sell',
+  'skip_tutorial',
+]);
 
 function recommendedAction(
   step: TutorialStep,
@@ -91,6 +61,7 @@ function recommendedAction(
 export function presentFarmLoop(
   state: FarmLoopState,
   content: FarmingContentPort,
+  translate: Translator,
 ): FarmLoopViewModel {
   const tile = getFarmTile(state.field, TUTORIAL_TILE_ID);
   if (tile === undefined) {
@@ -115,19 +86,19 @@ export function presentFarmLoop(
 
   const copy = state.tutorial.skipped
     ? Object.freeze({
-        title: 'Chế độ tự do',
-        hint: 'Hướng dẫn đã được bỏ qua; starter farm state vẫn giữ nguyên.',
+        title: translate('farm.free.title'),
+        hint: translate('farm.free.hint'),
       })
-    : STEP_COPY[state.tutorial.step];
+    : farmStepCopy(translate, state.tutorial.step);
   const recommended = state.tutorial.skipped
     ? null
     : recommendedAction(state.tutorial.step);
 
   const actions = Object.freeze(
-    (Object.keys(ACTION_LABELS) as FarmLoopTutorialAction[]).map((action) =>
+    FARM_ACTIONS.map((action) =>
       Object.freeze({
         action,
-        label: ACTION_LABELS[action],
+        label: farmActionLabel(translate, action),
         recommended: action === recommended,
       }),
     ),

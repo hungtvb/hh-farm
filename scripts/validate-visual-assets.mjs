@@ -1,3 +1,4 @@
+// @ts-nocheck -- runtime validator checks manifest, SVG structure, anchors and budget.
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

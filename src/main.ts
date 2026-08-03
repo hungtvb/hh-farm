@@ -7,9 +7,9 @@ async function bootstrap(): Promise<void> {
   exposeBuildInfo();
 
   const params = new URLSearchParams(window.location.search);
-  const saveSpikeEnabled = import.meta.env.MODE === 'e2e';
+  const e2eEnabled = import.meta.env.MODE === 'e2e';
 
-  if (saveSpikeEnabled && params.has('save-spike')) {
+  if (e2eEnabled && params.has('save-spike')) {
     const { runSaveSpikeHarness } = await import('./dev/saveSpikeHarness');
     await runSaveSpikeHarness();
     return;
@@ -20,7 +20,15 @@ async function bootstrap(): Promise<void> {
     throw new Error('Missing #app root for HH Farm.');
   }
 
-  mountGameHud(appRoot);
+  const hud = mountGameHud(appRoot);
+
+  if (e2eEnabled && params.has('day-spike')) {
+    const { runDayTransitionHarness } = await import(
+      './dev/dayTransitionHarness'
+    );
+    await runDayTransitionHarness(hud);
+    return;
+  }
 
   const { createGame } = await import('./game/bootstrap/createGame');
   createGame('game-root');

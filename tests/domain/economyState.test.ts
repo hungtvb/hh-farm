@@ -103,9 +103,9 @@ function withItem(
 }
 
 function createFullPlayerItems(): PlayerItemsState {
-  const slots = Array.from<InventorySlot>(
+  const slots = Array.from(
     { length: INVENTORY_SLOT_COUNT },
-    (_, index) =>
+    (_, index): InventorySlot =>
       Object.freeze({ itemId: `material.${String(index)}`, quantity: 1 }),
   );
 
@@ -130,7 +130,9 @@ describe('buyShopOffer', () => {
     }
 
     expect(result.state.wallet.coins).toBe(0);
-    expect(countInventoryItem(result.state.playerItems.inventory, 'seed.turnip')).toBe(1);
+    expect(
+      countInventoryItem(result.state.playerItems.inventory, 'seed.turnip'),
+    ).toBe(1);
     expect(result.events).toEqual([
       {
         type: 'item-bought',
@@ -160,7 +162,9 @@ describe('buyShopOffer', () => {
     }
 
     expect(result.state.wallet.coins).toBe(0);
-    expect(countInventoryItem(result.state.playerItems.inventory, 'seed.turnip')).toBe(3);
+    expect(
+      countInventoryItem(result.state.playerItems.inventory, 'seed.turnip'),
+    ).toBe(3);
   });
 
   it('rejects insufficient funds without changing wallet or inventory', () => {
@@ -185,7 +189,10 @@ describe('buyShopOffer', () => {
   });
 
   it('rejects a full inventory without debiting the wallet', () => {
-    const state = createEconomyState(createWallet(100), createFullPlayerItems());
+    const state = createEconomyState(
+      createWallet(100),
+      createFullPlayerItems(),
+    );
     const result = buyShopOffer(state, catalog, {
       offerId: 'shop.seed.turnip',
       purchaseCount: 1,
@@ -246,7 +253,9 @@ describe('sellInventoryItem', () => {
     }
 
     expect(result.state.wallet.coins).toBe(80);
-    expect(countInventoryItem(result.state.playerItems.inventory, 'produce.turnip')).toBe(1);
+    expect(
+      countInventoryItem(result.state.playerItems.inventory, 'produce.turnip'),
+    ).toBe(1);
     expect(result.events).toEqual([
       {
         type: 'item-sold',
@@ -323,6 +332,8 @@ describe('sellInventoryItem', () => {
       error: { code: 'coin_overflow' },
     });
     expect(result.state).toBe(state);
-    expect(countInventoryItem(result.state.playerItems.inventory, 'produce.turnip')).toBe(1);
+    expect(
+      countInventoryItem(result.state.playerItems.inventory, 'produce.turnip'),
+    ).toBe(1);
   });
 });

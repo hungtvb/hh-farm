@@ -211,19 +211,50 @@ async function moveUntilCoordinate(
   }
 }
 
+async function alignPlayerX(
+  page: Page,
+  canvas: Locator,
+  targetX: number,
+  tolerance = 4,
+): Promise<void> {
+  let currentX = await readNumberAttribute(canvas, 'data-player-x');
+  if (currentX > targetX + tolerance) {
+    await moveUntilCoordinate(
+      page,
+      canvas,
+      'ArrowLeft',
+      'data-player-x',
+      'at_most',
+      targetX + tolerance,
+    );
+  }
+
+  currentX = await readNumberAttribute(canvas, 'data-player-x');
+  if (currentX < targetX - tolerance) {
+    await moveUntilCoordinate(
+      page,
+      canvas,
+      'ArrowRight',
+      'data-player-x',
+      'at_least',
+      targetX - tolerance,
+    );
+  }
+
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
+    .toBeGreaterThanOrEqual(targetX - tolerance);
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
+    .toBeLessThanOrEqual(targetX + tolerance);
+}
+
 async function moveToFarmTile(
   page: Page,
   canvas: Locator,
   targetTileId: string,
 ): Promise<void> {
-  await moveUntilCoordinate(
-    page,
-    canvas,
-    'ArrowLeft',
-    'data-player-x',
-    'at_most',
-    418,
-  );
+  await alignPlayerX(page, canvas, 416);
   await moveUntilTarget(page, canvas, 'ArrowUp', targetTileId, 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'farm_tile');
 }

@@ -250,9 +250,13 @@
   }
 
   .hh-inventory-modal {
-    top: max(10px, env(safe-area-inset-top));
+    top: auto;
     bottom: max(10px, env(safe-area-inset-bottom));
-    max-height: none;
+    height: auto;
+    max-height: calc(
+      100% - max(20px, env(safe-area-inset-top)) -
+        max(20px, env(safe-area-inset-bottom))
+    );
     transform: translateX(-50%);
   }
 

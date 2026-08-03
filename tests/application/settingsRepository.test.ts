@@ -47,7 +47,7 @@ describe('SettingsRepository', () => {
     });
   });
 
-  it('round-trips settings independently from farm save state', () => {
+  it('round-trips settings independently from farm save state', async () => {
     const storage = new MemorySettingsStorage();
     const repository = new SettingsRepository(storage);
     const settings = updatePlayerSettings(createDefaultPlayerSettings(), {
@@ -58,7 +58,7 @@ describe('SettingsRepository', () => {
       vibration: false,
     });
 
-    repository.save(settings);
+    await repository.save(settings);
 
     expect(repository.load()).toEqual({ status: 'loaded', settings });
     expect(storage.value).toContain('"schemaVersion":1');

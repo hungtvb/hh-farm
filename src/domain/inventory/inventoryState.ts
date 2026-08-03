@@ -76,7 +76,7 @@ function cloneStack(stack: InventoryStack): InventoryStack {
 export function createEmptyInventory(): InventoryState {
   return Object.freeze({
     slots: Object.freeze(
-      Array.from<InventorySlot>({ length: INVENTORY_SLOT_COUNT }).fill(null),
+      Array<InventorySlot>(INVENTORY_SLOT_COUNT).fill(null),
     ),
   });
 }
@@ -198,13 +198,18 @@ export function addInventoryItem(
     return validated;
   }
 
+  const validatedStackLimit = validated.stackLimit;
+  if (validatedStackLimit === undefined) {
+    throw new Error('Validated add transaction requires a stack limit.');
+  }
+
   const capacity = state.slots.reduce((total, slot) => {
     if (slot === null) {
-      return total + validated.stackLimit;
+      return total + validatedStackLimit;
     }
 
     return slot.itemId === validated.itemId
-      ? total + Math.max(0, validated.stackLimit - slot.quantity)
+      ? total + Math.max(0, validatedStackLimit - slot.quantity)
       : total;
   }, 0);
 
@@ -226,14 +231,14 @@ export function addInventoryItem(
       remaining === 0 ||
       slot === null ||
       slot.itemId !== validated.itemId ||
-      slot.quantity >= validated.stackLimit
+      slot.quantity >= validatedStackLimit
     ) {
       continue;
     }
 
     const amount = Math.min(
       remaining,
-      validated.stackLimit - slot.quantity,
+      validatedStackLimit - slot.quantity,
     );
     nextSlots[slotIndex] = Object.freeze({
       itemId: slot.itemId,
@@ -251,7 +256,7 @@ export function addInventoryItem(
       continue;
     }
 
-    const amount = Math.min(remaining, validated.stackLimit);
+    const amount = Math.min(remaining, validatedStackLimit);
     nextSlots[slotIndex] = Object.freeze({
       itemId: validated.itemId,
       quantity: amount,

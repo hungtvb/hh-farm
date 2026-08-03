@@ -2,13 +2,13 @@ import { advanceDay, type FarmState } from '../farm/farmState.js';
 import {
   createUpdatedCropInstance,
   createUpdatedFarmTile,
+  getCropGrowthProgressDays,
   type CropInstance,
   type FarmFieldState,
   type FarmTileState,
 } from '../farming/farmTileState.js';
 import type {
   FarmingContentPort,
-  FarmingCropContent,
   FarmingGrowthStageContent,
 } from '../farming/farmingPorts.js';
 
@@ -86,8 +86,9 @@ const EMPTY_EVENTS: readonly [] = Object.freeze([]);
 
 type ValidatedCrop = Readonly<{
   crop: CropInstance;
-  content: FarmingCropContent;
+  stages: readonly FarmingGrowthStageContent[];
   stage: FarmingGrowthStageContent;
+  progressDays: number;
 }>;
 
 function failure(
@@ -123,7 +124,17 @@ function validateCrop(
     );
   }
 
-  const stage = content.growthStages[tile.crop.growthStageIndex];
+  const stages = content.growthStages;
+  if (stages === undefined || stages.length !== content.growthStageCount) {
+    return failure(
+      state,
+      'invalid_growth_stage',
+      tile.id,
+      `Crop "${tile.crop.cropId}" is missing validated growth-stage metadata.`,
+    );
+  }
+
+  const stage = stages[tile.crop.growthStageIndex];
   if (stage === undefined) {
     return failure(
       state,
@@ -133,7 +144,7 @@ function validateCrop(
     );
   }
 
-  const mature = tile.crop.growthStageIndex === content.growthStages.length - 1;
+  const mature = tile.crop.growthStageIndex === stages.length - 1;
   if (mature !== (stage.durationDays === null)) {
     return failure(
       state,
@@ -143,12 +154,12 @@ function validateCrop(
     );
   }
 
+  const progressDays = getCropGrowthProgressDays(tile.crop);
   if (
-    !Number.isInteger(tile.crop.growthProgressDays) ||
-    tile.crop.growthProgressDays < 0 ||
-    (stage.durationDays !== null &&
-      tile.crop.growthProgressDays >= stage.durationDays) ||
-    (mature && tile.crop.growthProgressDays !== 0)
+    !Number.isInteger(progressDays) ||
+    progressDays < 0 ||
+    (stage.durationDays !== null && progressDays >= stage.durationDays) ||
+    (mature && progressDays !== 0)
   ) {
     return failure(
       state,
@@ -158,7 +169,7 @@ function validateCrop(
     );
   }
 
-  return Object.freeze({ crop: tile.crop, content, stage });
+  return Object.freeze({ crop: tile.crop, stages, stage, progressDays });
 }
 
 export function resolveCropVisualStage(
@@ -166,18 +177,19 @@ export function resolveCropVisualStage(
   contentPort: FarmingContentPort,
 ): CropVisualStage | undefined {
   const content = contentPort.getCrop(crop.cropId);
-  const stage = content?.growthStages[crop.growthStageIndex];
+  const stages = content?.growthStages;
+  const stage = stages?.[crop.growthStageIndex];
 
-  if (content === undefined || stage === undefined) {
+  if (content === undefined || stages === undefined || stage === undefined) {
     return undefined;
   }
 
   return Object.freeze({
     stageIndex: crop.growthStageIndex,
     spriteKey: stage.spriteKey,
-    progressDays: crop.growthProgressDays,
+    progressDays: getCropGrowthProgressDays(crop),
     durationDays: stage.durationDays,
-    mature: crop.growthStageIndex === content.growthStages.length - 1,
+    mature: crop.growthStageIndex === stages.length - 1,
   });
 }
 
@@ -207,8 +219,7 @@ export function resolveNextDay(
 
     if (validated !== undefined && tile.watered) {
       const mature =
-        validated.crop.growthStageIndex ===
-        validated.content.growthStages.length - 1;
+        validated.crop.growthStageIndex === validated.stages.length - 1;
 
       if (!mature) {
         const durationDays = validated.stage.durationDays;
@@ -216,10 +227,10 @@ export function resolveNextDay(
           throw new Error('Validated non-mature stage requires durationDays.');
         }
 
-        const nextProgressDays = validated.crop.growthProgressDays + 1;
+        const nextProgressDays = validated.progressDays + 1;
         if (nextProgressDays >= durationDays) {
           const nextStageIndex = validated.crop.growthStageIndex + 1;
-          const nextStage = validated.content.growthStages[nextStageIndex];
+          const nextStage = validated.stages[nextStageIndex];
 
           if (nextStage === undefined) {
             throw new Error('Validated crop is missing its next growth stage.');

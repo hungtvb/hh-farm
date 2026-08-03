@@ -15,11 +15,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      HH_FARM_GIT_SHA: 641671a096fa9b7944276c6512caf203e36297f6
-      HH_FARM_GIT_REF: main
-      HH_FARM_DEPLOYMENT_ENVIRONMENT: production
-      HH_FARM_DEPLOYMENT_URL: https://hh-farm.vercel.app
 
     steps:
       - name: Checkout exact production source
@@ -52,10 +47,18 @@ jobs:
       - name: Run browser smoke
         run: npm run test:e2e
 
+      - name: Build exact Vercel production bundle
+        run: npm run build && npm run verify:production-bundle
+        env:
+          HH_FARM_GIT_SHA: 641671a096fa9b7944276c6512caf203e36297f6
+          HH_FARM_GIT_REF: main
+          HH_FARM_DEPLOYMENT_ENVIRONMENT: production
+          HH_FARM_DEPLOYMENT_URL: https://hh-farm.vercel.app
+
       - name: Upload production bundle
         uses: actions/upload-artifact@v4
         with:
-          name: vercel-dist-main-641671a-v2
+          name: vercel-dist-main-641671a-v3
           path: dist/
           if-no-files-found: error
           retention-days: 7

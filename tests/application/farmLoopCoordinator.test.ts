@@ -46,7 +46,7 @@ async function expectCompleted(
   const result = await resultPromise;
   expect(result.status).toBe('completed');
   if (result.status !== 'completed') {
-    throw new Error(result.message);
+    throw new Error(`Expected completed, received ${result.status}.`);
   }
   return result;
 }
@@ -105,6 +105,9 @@ describe('FarmLoopCoordinator', () => {
       action: 'plant',
       code: 'soil_not_tilled',
     });
+    if (result.status === 'completed') {
+      throw new Error('Expected the plant action to be rejected.');
+    }
     expect(result.message.length).toBeGreaterThan(0);
     expect(coordinator.getState()).toBe(initial);
     expect(saves).toEqual([]);

@@ -18,9 +18,10 @@ import { createPlayerItemsState } from '../../src/domain/inventory/playerItemsSt
 const catalog = createEconomyCatalogPort(gameContentCatalog);
 
 function createFullKnownInventory() {
-  const slots = Array.from<InventorySlot>(
+  const slots = Array.from(
     { length: INVENTORY_SLOT_COUNT },
-    () => Object.freeze({ itemId: 'tool.hoe', quantity: 1 }),
+    (): InventorySlot =>
+      Object.freeze({ itemId: 'tool.hoe', quantity: 1 }),
   );
 
   return createPlayerItemsState({ inventory: createInventory(slots) });
@@ -117,13 +118,17 @@ describe('presentShop', () => {
     const view = presentShop(state, catalog, 3);
 
     expect(view.inventory).toHaveLength(5);
-    expect(view.inventory.find((item) => item.itemId === 'seed.turnip')).toMatchObject({
+    expect(
+      view.inventory.find((item) => item.itemId === 'seed.turnip'),
+    ).toMatchObject({
       quantity: 5,
       sellPrice: 5,
       disabled: false,
       disabledReason: null,
     });
-    expect(view.inventory.find((item) => item.itemId === 'tool.hoe')).toMatchObject({
+    expect(
+      view.inventory.find((item) => item.itemId === 'tool.hoe'),
+    ).toMatchObject({
       quantity: 1,
       sellPrice: 0,
       disabled: true,

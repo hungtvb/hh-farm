@@ -1,0 +1,46 @@
+name: ChatGPT Apply Issue 27 Round Two
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-issue-27-round2.yml
+      - .chatgpt/issue-27-round2.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Decode and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .chatgpt/issue-27-round2.patch.gz.b64 > "$RUNNER_TEMP/issue-27-round2.patch.gz"
+          echo "61784c61968e556446097111b2fd162c6c208beaa9a0ae33b1f936e8873671f5  $RUNNER_TEMP/issue-27-round2.patch.gz" | sha256sum --check
+
+      - name: Apply patch to exact product commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach 09c2243b125d178310533a0cc37ff0e0dcbab75e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gzip -dc "$RUNNER_TEMP/issue-27-round2.patch.gz" | git am
+          test "$(git rev-parse HEAD^{tree})" = "b9e767f8eff04476b8c764d6ae97fd84f3f7415b"
+          git diff --check HEAD^
+
+      - name: Publish issue 27 round-two fix
+        shell: bash
+        run: git push origin HEAD:refs/heads/feat/ton-238-mobile-world-first

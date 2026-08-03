@@ -12,12 +12,12 @@ function createState(day: number): DayTransitionState {
 }
 
 describe('createHudDayPresentationPort', () => {
-  it('updates the committed day and exposes transition completion metadata', async () => {
-    const dataset: Record<string, string> = {};
+  it('updates the committed day and marks transition completion', async () => {
     const setDay = vi.fn();
+    const markDayTransitionComplete = vi.fn();
     const port = createHudDayPresentationPort({
-      root: { dataset } as unknown as HTMLElement,
       setDay,
+      markDayTransitionComplete,
     });
 
     await port.present(createState(1), createState(2), [
@@ -25,9 +25,6 @@ describe('createHudDayPresentationPort', () => {
     ]);
 
     expect(setDay).toHaveBeenCalledWith(2);
-    expect(dataset).toEqual({
-      dayTransitionEvents: '1',
-      dayTransitionStatus: 'complete',
-    });
+    expect(markDayTransitionComplete).toHaveBeenCalledWith(1);
   });
 });

@@ -57,6 +57,12 @@ export class FarmScene extends Phaser.Scene {
   private lastRenderedState: FarmLoopState | undefined;
   private actionPending = false;
 
+  private readonly handleActionInput = (): void => {
+    if (!this.actionPending) {
+      void this.performRecommendedAction();
+    }
+  };
+
   public constructor() {
     super('farm');
   }
@@ -121,6 +127,9 @@ export class FarmScene extends Phaser.Scene {
     this.actionKeys = ACTION_KEY_CODES.map((keyCode) =>
       keyboard.addKey(keyCode),
     );
+    for (const key of this.actionKeys) {
+      key.on('down', this.handleActionInput);
+    }
 
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.writePhysicsDebugState();
@@ -140,13 +149,6 @@ export class FarmScene extends Phaser.Scene {
     this.playerController?.update(delta);
     this.renderFarmState(false);
     this.updateTargetFeedback();
-
-    if (
-      !this.actionPending &&
-      this.actionKeys.some((key) => Phaser.Input.Keyboard.JustDown(key))
-    ) {
-      void this.performRecommendedAction();
-    }
   }
 
   private createAuthoritativeTutorialTile(position: Phaser.Math.Vector2): void {
@@ -331,6 +333,9 @@ export class FarmScene extends Phaser.Scene {
     this.playerController?.destroy();
     this.playerController = undefined;
     this.farmRuntime = undefined;
+    for (const key of this.actionKeys) {
+      key.off('down', this.handleActionInput);
+    }
     this.actionKeys = [];
     this.soilVisual = undefined;
     this.cropVisual = undefined;

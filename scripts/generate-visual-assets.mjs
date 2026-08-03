@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,6 +53,7 @@ files.set('crop-turnip.svg', cropSvg('turnip'));
 files.set('crop-carrot.svg', cropSvg('carrot'));
 files.set('crop-strawberry.svg', cropSvg('strawberry'));
 
+await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 for (const [name, content] of files) {
   await writeFile(path.join(outputDir, name), content, 'utf8');

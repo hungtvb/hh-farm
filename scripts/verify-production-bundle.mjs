@@ -8,6 +8,9 @@ const FORBIDDEN_MARKERS = [
   'seed-recovery',
   'corrupted-current',
   'writeRawSaveSlotForDiagnostics',
+  'HH Farm · Day transition test',
+  'day-transition-result',
+  'dayTransitionHarness',
 ];
 const DEPLOYMENT_ENVIRONMENTS = new Set([
   'local',
@@ -70,7 +73,7 @@ for (const fileUrl of bundleFiles) {
     if (content.includes(marker)) {
       const relativePath = fileUrl.pathname.split('/dist/')[1] ?? '';
       throw new Error(
-        `Production bundle leaked save diagnostics marker "${marker}" in ${join('dist', relativePath)}.`,
+        `Production bundle leaked technical harness marker "${marker}" in ${join('dist', relativePath)}.`,
       );
     }
   }
@@ -110,5 +113,5 @@ if (
 }
 
 console.log(
-  `Verified ${String(bundleFiles.length)} production bundle files and version.json; save diagnostics are absent.`,
+  `Verified ${String(bundleFiles.length)} production bundle files and version.json; technical harnesses are absent.`,
 );

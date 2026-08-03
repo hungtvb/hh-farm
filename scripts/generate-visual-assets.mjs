@@ -1,4 +1,3 @@
-// @ts-nocheck -- deterministic build script is runtime-validated by validate-visual-assets.mjs.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

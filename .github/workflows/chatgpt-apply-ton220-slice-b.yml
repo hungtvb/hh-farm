@@ -25,9 +25,13 @@ jobs:
         run: |
           set -euo pipefail
           base64 -d .github/chatgpt/ton220-slice-b.patch.gz.b64 > "$RUNNER_TEMP/ton220.patch.gz"
-          test "$(sha256sum "$RUNNER_TEMP/ton220.patch.gz" | awk '{print $1}')" = "6cc4f7e9fcdff08db87f06d1b36de6242c137188e5d91e92dae02c76be54031f"
+          gzip_sha="$(sha256sum "$RUNNER_TEMP/ton220.patch.gz" | awk '{print $1}')"
+          echo "gzip_sha=$gzip_sha"
           gzip -dc "$RUNNER_TEMP/ton220.patch.gz" > "$RUNNER_TEMP/ton220.patch"
-          test "$(sha256sum "$RUNNER_TEMP/ton220.patch" | awk '{print $1}')" = "e5be285b96df7879efff07ad17695fe0bee1883e3b5f927ee0610889b931220a"
+          patch_sha="$(sha256sum "$RUNNER_TEMP/ton220.patch" | awk '{print $1}')"
+          echo "patch_sha=$patch_sha"
+          test "$gzip_sha" = "6cc4f7e9fcdff08db87f06d1b36de6242c137188e5d91e92dae02c76be54031f"
+          test "$patch_sha" = "e5be285b96df7879efff07ad17695fe0bee1883e3b5f927ee0610889b931220a"
       - name: Build exact rescued merge tree
         shell: bash
         run: |

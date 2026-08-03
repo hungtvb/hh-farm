@@ -1,4 +1,5 @@
 import './styles.css';
+import './ui/mobileLayout.css';
 import { exposeBuildInfo } from './build/buildInfo';
 import { mountGameHud } from './ui/gameHud';
 

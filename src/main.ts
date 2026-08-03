@@ -4,6 +4,7 @@ import './ui/inventoryUi.css';
 import './ui/shopUi.css';
 import './ui/farmLoopUi.css';
 import './ui/settingsUi.css';
+import './ui/accessibilityUi.css';
 import { exposeBuildInfo } from './build/buildInfo';
 import { mountGameExperience } from './ui/mountGameExperience';
 

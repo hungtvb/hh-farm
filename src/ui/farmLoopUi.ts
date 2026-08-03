@@ -108,6 +108,7 @@ export function mountFarmLoopUi(
 
   const root = createElement('section', 'hh-farm-loop');
   root.dataset.ready = 'true';
+  root.dataset.interactionMode = 'direct-manipulation';
   root.setAttribute('aria-label', translate('farm.rootLabel'));
 
   const tutorial = createElement('aside', 'hh-farm-loop__tutorial');

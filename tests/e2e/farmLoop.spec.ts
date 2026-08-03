@@ -146,7 +146,55 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       const settings = page.locator('.hh-settings-modal');
 
       await expect(loop).toBeVisible({ timeout: 10_000 });
-      await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
+      await expect(loop).toHaveAttribute(
+        'data-interaction-mode',
+        'direct-manipulation',
+      );
+      await expect(page.locator('.hh-farm-loop__stage')).toBeHidden();
+      await expect(page.locator('.hh-farm-loop__actions')).toBeHidden();
+      await expect(page.locator('.hh-action-prompt')).toBeHidden();
+
+      const loopBox = await loop.boundingBox();
+      const canvas = page.locator('canvas[data-scene="farm"]');
+      const canvasBox = await canvas.boundingBox();
+      expect(loopBox).not.toBeNull();
+      expect(canvasBox).not.toBeNull();
+      await expect(canvas).toHaveAttribute(
+        'data-camera-profile',
+        'portrait-world-first',
+      );
+      await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
+      if (loopBox !== null && canvasBox !== null) {
+        expect(loopBox.height).toBeLessThan(90);
+        expect(canvasBox.width).toBeGreaterThan(1_300);
+        expect(canvasBox.height).toBeGreaterThan(800);
+        expect(loopBox.y).toBeGreaterThanOrEqual(canvasBox.y + 60);
+        expect(loopBox.y + loopBox.height).toBeLessThan(
+          canvasBox.y + canvasBox.height * 0.2,
+        );
+      }
+
+      const skipButton = page.locator(
+        '.hh-farm-loop__skip[data-action="skip_tutorial"]',
+      );
+      const settingsToggle = page.locator('.hh-settings-toggle');
+      const [skipBox, settingsBox] = await Promise.all([
+        skipButton.boundingBox(),
+        settingsToggle.boundingBox(),
+      ]);
+      expect(skipBox).not.toBeNull();
+      expect(settingsBox).not.toBeNull();
+      if (skipBox !== null && settingsBox !== null) {
+        const horizontallySeparated =
+          skipBox.x + skipBox.width <= settingsBox.x ||
+          settingsBox.x + settingsBox.width <= skipBox.x;
+        const verticallySeparated =
+          skipBox.y + skipBox.height <= settingsBox.y ||
+          settingsBox.y + settingsBox.height <= skipBox.y;
+        expect(horizontallySeparated || verticallySeparated).toBe(true);
+      }
+
+      await skipButton.tap();
 
       await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
       await expect(loop).toHaveAttribute('data-tutorial-step', 'till');

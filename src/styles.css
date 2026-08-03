@@ -45,6 +45,9 @@ canvas {
   margin: 0 auto;
   border-radius: 24px;
   box-shadow: 0 24px 70px color-mix(in srgb, var(--hh-shadow, #263a2b) 30%, transparent);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .game-hud {

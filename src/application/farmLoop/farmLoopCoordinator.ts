@@ -231,8 +231,11 @@ export class FarmLoopCoordinator {
     return this.state;
   }
 
-  public perform(action: FarmLoopTutorialAction): Promise<FarmLoopResult> {
-    return this.execute(action, () => this.resolve(action));
+  public perform(
+    action: FarmLoopTutorialAction,
+    targetTileId: string = TUTORIAL_TILE_ID,
+  ): Promise<FarmLoopResult> {
+    return this.execute(action, () => this.resolve(action, targetTileId));
   }
 
   public commitExternal(
@@ -304,7 +307,10 @@ export class FarmLoopCoordinator {
     }
   }
 
-  private resolve(action: FarmLoopTutorialAction): FarmLoopResult {
+  private resolve(
+    action: FarmLoopTutorialAction,
+    targetTileId: string,
+  ): FarmLoopResult {
     if (action === 'skip_tutorial') {
       const tutorial = skipTutorial(this.state.tutorial);
       const candidate = createFarmLoopState({
@@ -329,7 +335,7 @@ export class FarmLoopCoordinator {
           field: this.state.field,
           inventory: this.state.economy.playerItems,
         },
-        { tileId: TUTORIAL_TILE_ID },
+        { tileId: targetTileId },
       );
       return this.fromFarmingResult(action, result);
     }
@@ -341,7 +347,7 @@ export class FarmLoopCoordinator {
           inventory: this.state.economy.playerItems,
         },
         {
-          tileId: TUTORIAL_TILE_ID,
+          tileId: targetTileId,
           cropId: 'turnip',
           plantedDay: this.state.farm.day,
         },
@@ -359,7 +365,7 @@ export class FarmLoopCoordinator {
           field: this.state.field,
           inventory: this.state.economy.playerItems,
         },
-        { tileId: TUTORIAL_TILE_ID },
+        { tileId: targetTileId },
       );
       return this.fromFarmingResult(action, result);
     }
@@ -370,7 +376,7 @@ export class FarmLoopCoordinator {
           field: this.state.field,
           inventory: this.state.economy.playerItems,
         },
-        { tileId: TUTORIAL_TILE_ID },
+        { tileId: targetTileId },
         {
           content: this.farmingContent,
           inventory: this.farmingInventory,
@@ -380,7 +386,7 @@ export class FarmLoopCoordinator {
     }
 
     if (action === 'next_day') {
-      return this.resolveNextDayAction();
+      return this.resolveNextDayAction(targetTileId);
     }
 
     return this.resolveSellAction();
@@ -415,8 +421,8 @@ export class FarmLoopCoordinator {
     });
   }
 
-  private resolveNextDayAction(): FarmLoopResult {
-    const tile = getFarmTile(this.state.field, TUTORIAL_TILE_ID);
+  private resolveNextDayAction(targetTileId: string): FarmLoopResult {
+    const tile = getFarmTile(this.state.field, targetTileId);
     if (tile?.crop !== null && tile?.crop !== undefined && !tile.watered) {
       return rejected(
         'next_day',
@@ -451,7 +457,7 @@ export class FarmLoopCoordinator {
     });
     candidate = applyTutorialEvents(candidate, transition.events);
 
-    const nextTile = getFarmTile(candidate.field, TUTORIAL_TILE_ID);
+    const nextTile = getFarmTile(candidate.field, targetTileId);
     const crop = nextTile?.crop;
     if (crop !== null && crop !== undefined) {
       const content = this.farmingContent.getCrop(crop.cropId);

@@ -8,19 +8,36 @@ const manifestPath = path.join(outputDir, 'manifest.json');
 const system = JSON.parse(
   await readFile(path.join(root, 'assets/source/visual-system.json'), 'utf8'),
 );
+const artPack = JSON.parse(
+  await readFile(path.join(root, 'assets/source/art-pack-v1.json'), 'utf8'),
+);
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 const p = system.palette;
-const W = 64;
-const H = 80;
-const COLS = 6;
-const directions = ['down', 'left', 'right', 'up'];
-const animations = [
-  { id: 'idle', frames: 4 },
-  { id: 'walk', frames: 6 },
-  { id: 'hoe', frames: 5 },
-  { id: 'water', frames: 6 },
-  { id: 'harvest', frames: 5 },
-];
+const W = artPack.sourceScale.playerFrameWidth;
+const H = artPack.sourceScale.playerFrameHeight;
+const directions = [...artPack.directions];
+const animations = Object.entries(artPack.animations).map(
+  ([assetId, config]) => ({
+    id: assetId.replace(/^player\./, ''),
+    assetId,
+    frames: config.framesPerDirection,
+    frameDurationMs: config.frameDurationMs,
+    loop: config.loop,
+    impactFrameIndex: config.impactFrameIndex,
+  }),
+);
+const animationById = new Map(
+  animations.map((animation) => [animation.id, animation]),
+);
+const COLS = Math.max(...animations.map((animation) => animation.frames));
+
+function animationFrameCount(animationId) {
+  const animation = animationById.get(animationId);
+  if (animation === undefined) {
+    throw new Error(`Missing player animation contract: ${animationId}`);
+  }
+  return animation.frames;
+}
 
 const round = (value) => Number(value.toFixed(2));
 const cell = (column, row, body) =>
@@ -93,14 +110,14 @@ function arms(direction, leftAngle, rightAngle, crouch = 0) {
 }
 
 function idle(direction, frame) {
-  const phase = (frame / 4) * Math.PI * 2;
+  const phase = (frame / animationFrameCount('idle')) * Math.PI * 2;
   const bob = round(Math.sin(phase) * 1.4);
   const sway = round(Math.cos(phase) * 3);
   return `${legs(0)}${body(direction, bob, 0, sway * 0.3)}${arms(direction, sway, -sway)}`;
 }
 
 function walk(direction, frame) {
-  const phase = (frame / 6) * Math.PI * 2;
+  const phase = (frame / animationFrameCount('walk')) * Math.PI * 2;
   const step = Math.sin(phase);
   const bob = round(-Math.abs(step) * 1.5);
   const swing = round(step * 20);
@@ -160,27 +177,88 @@ function render(animation, direction, frame) {
   return harvest(direction, frame);
 }
 
-const frames = [];
+const svgFrames = [];
+const frameRecords = [];
+const animationMetadata = {};
+
 for (const [animationIndex, animation] of animations.entries()) {
+  const rowStart = animationIndex * directions.length;
+  const directionRows = {};
+
   for (const [directionIndex, direction] of directions.entries()) {
-    const row = animationIndex * directions.length + directionIndex;
-    for (let frame = 0; frame < animation.frames; frame += 1) {
-      frames.push(cell(frame, row, render(animation.id, direction, frame)));
+    const row = rowStart + directionIndex;
+    directionRows[direction] = row;
+
+    for (let frameIndex = 0; frameIndex < animation.frames; frameIndex += 1) {
+      const column = frameIndex;
+      svgFrames.push(
+        cell(column, row, render(animation.id, direction, frameIndex)),
+      );
+      frameRecords.push({
+        stableFrameKey: `player.${animation.id}.${direction}.${String(frameIndex + 1).padStart(2, '0')}`,
+        animationId: animation.assetId,
+        direction,
+        frameIndex,
+        row,
+        column,
+        x: column * W,
+        y: row * H,
+        width: W,
+        height: H,
+      });
     }
   }
+
+  animationMetadata[animation.id] = {
+    assetId: animation.assetId,
+    rowStart,
+    directionRows,
+    framesPerDirection: animation.frames,
+    frameDurationMs: animation.frameDurationMs,
+    loop: animation.loop,
+    impactFrameIndex: animation.impactFrameIndex,
+  };
 }
 
 const rows = animations.length * directions.length;
 const width = COLS * W;
 const height = rows * H;
+const usedFrames = frameRecords.length;
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 ${defs}
-${frames.join('\n')}
+${svgFrames.join('\n')}
 </svg>
 `;
 const file = 'player-character.svg';
+const metadataFile = 'player-character.frames.json';
+const metadata = {
+  version: artPack.version,
+  textureId: 'player.character',
+  sourceFile: file,
+  frameWidth: W,
+  frameHeight: H,
+  columns: COLS,
+  rows,
+  totalFrames: COLS * rows,
+  usedFrames,
+  origin: {
+    x: artPack.anchors.player.x,
+    y: artPack.anchors.player.y,
+  },
+  footY: artPack.anchors.player.footY,
+  collision: artPack.anchors.player.collision,
+  directions,
+  animations: animationMetadata,
+  frames: frameRecords,
+};
+
 await writeFile(path.join(outputDir, file), svg, 'utf8');
+await writeFile(
+  path.join(outputDir, metadataFile),
+  `${JSON.stringify(metadata, null, 2)}\n`,
+  'utf8',
+);
 
 manifest.entries = manifest.entries.filter(
   (entry) => entry.id !== 'player.character',
@@ -188,6 +266,7 @@ manifest.entries = manifest.entries.filter(
 manifest.entries.push({
   id: 'player.character',
   file,
+  metadataFile,
   anchor: 'bottom-center',
   type: 'sprite-sheet',
   frameWidth: W,
@@ -195,17 +274,18 @@ manifest.entries.push({
   columns: COLS,
   rows,
   totalFrames: COLS * rows,
-  usedFrames: animations.reduce(
-    (sum, animation) => sum + animation.frames * directions.length,
-    0,
-  ),
+  usedFrames,
   directions,
   animations: Object.fromEntries(
-    animations.map((animation, animationIndex) => [
-      animation.id,
+    Object.entries(animationMetadata).map(([animationId, animation]) => [
+      animationId,
       {
-        rowStart: animationIndex * directions.length,
-        framesPerDirection: animation.frames,
+        rowStart: animation.rowStart,
+        directionRows: animation.directionRows,
+        framesPerDirection: animation.framesPerDirection,
+        frameDurationMs: animation.frameDurationMs,
+        loop: animation.loop,
+        impactFrameIndex: animation.impactFrameIndex,
       },
     ]),
   ),
@@ -218,5 +298,5 @@ await writeFile(
   'utf8',
 );
 console.log(
-  `Generated player-character.svg (${String(width)}×${String(height)}, 104 used frames).`,
+  `Generated ${file} (${String(width)}×${String(height)}, ${String(usedFrames)} used frames) and ${metadataFile}.`,
 );

@@ -36,7 +36,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const { createGame } = await import('./game/bootstrap/createGame');
-  createGame('game-root');
+  createGame('game-root', experience.farmRuntime);
 }
 
 void bootstrap();

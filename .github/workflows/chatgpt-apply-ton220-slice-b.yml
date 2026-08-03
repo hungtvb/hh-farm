@@ -6,7 +6,10 @@ on:
       - main
     paths:
       - .github/workflows/chatgpt-apply-ton220-slice-b.yml
-      - .github/chatgpt/ton220-slice-b.patch.gz.b64
+      - .github/chatgpt/ton220-slice-b.part00
+      - .github/chatgpt/ton220-slice-b.part01
+      - .github/chatgpt/ton220-slice-b.part02
+      - .github/chatgpt/ton220-slice-b.part03
 
 permissions:
   contents: write
@@ -20,18 +23,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Decode and verify patch
+      - name: Join and verify patch chunks
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d .github/chatgpt/ton220-slice-b.patch.gz.b64 > "$RUNNER_TEMP/ton220.patch.gz"
-          gzip_sha="$(sha256sum "$RUNNER_TEMP/ton220.patch.gz" | awk '{print $1}')"
-          echo "gzip_sha=$gzip_sha"
+          test "$(sha256sum .github/chatgpt/ton220-slice-b.part00 | awk '{print $1}')" = "0609ccd905f5a61eab6fd29d045938c45226273e0aaaa0bfc542fa4a8fe370ab"
+          test "$(sha256sum .github/chatgpt/ton220-slice-b.part01 | awk '{print $1}')" = "a4f37a206ed63f530c395504afe1008de1d21071cde503ac320ff23137216b91"
+          test "$(sha256sum .github/chatgpt/ton220-slice-b.part02 | awk '{print $1}')" = "1fb1edf9cf546205f07f08f8590fc93fe35e1aa8361dd99e18fd09d24782df1d"
+          test "$(sha256sum .github/chatgpt/ton220-slice-b.part03 | awk '{print $1}')" = "40d7559b39daf04aadd71659a3f37fe102dc9daaf28e8a6fd1826bf62fd13668"
+          cat .github/chatgpt/ton220-slice-b.part0* > "$RUNNER_TEMP/ton220.patch.gz.b64"
+          base64 -d "$RUNNER_TEMP/ton220.patch.gz.b64" > "$RUNNER_TEMP/ton220.patch.gz"
+          test "$(sha256sum "$RUNNER_TEMP/ton220.patch.gz" | awk '{print $1}')" = "6cc4f7e9fcdff08db87f06d1b36de6242c137188e5d91e92dae02c76be54031f"
           gzip -dc "$RUNNER_TEMP/ton220.patch.gz" > "$RUNNER_TEMP/ton220.patch"
-          patch_sha="$(sha256sum "$RUNNER_TEMP/ton220.patch" | awk '{print $1}')"
-          echo "patch_sha=$patch_sha"
-          test "$gzip_sha" = "6cc4f7e9fcdff08db87f06d1b36de6242c137188e5d91e92dae02c76be54031f"
-          test "$patch_sha" = "e5be285b96df7879efff07ad17695fe0bee1883e3b5f927ee0610889b931220a"
+          test "$(sha256sum "$RUNNER_TEMP/ton220.patch" | awk '{print $1}')" = "e5be285b96df7879efff07ad17695fe0bee1883e3b5f927ee0610889b931220a"
       - name: Build exact rescued merge tree
         shell: bash
         run: |
@@ -40,7 +44,6 @@ jobs:
           old_head="28474aef0bfacf45413a9c49642263d4bfd47198"
           main_head="b3731d03d1134f908c8b24702bf290c745af0755"
           git fetch origin "$feature_ref" refs/heads/main
-          test "$(git rev-parse FETCH_HEAD)" != ""
           test "$(git rev-parse "origin/feat/ton-220-vertical-slice-art-pack")" = "$old_head"
           test "$(git rev-parse origin/main)" = "$main_head"
           git checkout --detach "$old_head"

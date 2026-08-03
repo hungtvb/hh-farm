@@ -52,6 +52,8 @@ const cropSvg = (kind) => {
 files.set('crop-turnip.svg', cropSvg('turnip'));
 files.set('crop-carrot.svg', cropSvg('carrot'));
 files.set('crop-strawberry.svg', cropSvg('strawberry'));
+files.set('world-bed.svg', svg(tileSize, tileSize, `${roundedBackground(p.mint)}<path d="M10 46h44v9H10z" fill="${p.wood}" stroke="${p.woodDark}" stroke-width="3"/><path d="M13 24h38v23H13z" fill="${p.cream}" stroke="${p.woodDark}" stroke-width="3"/><path d="M16 27h13v9H16z" rx="4" fill="${p.sky}" stroke="${p.woodDark}" stroke-width="2"/><path d="M29 27h19v17H29z" fill="${p.berry}" opacity=".72"/><path d="M10 20v36M54 20v36" stroke="${p.woodDark}" stroke-width="4" stroke-linecap="round"/>`));
+files.set('world-shipping-bin.svg', svg(tileSize, tileSize, `${roundedBackground(p.mint)}<path d="M13 24h38l-4 30H17z" fill="${p.wood}" stroke="${p.woodDark}" stroke-width="3" stroke-linejoin="round"/><path d="M10 23h44v8H10z" rx="3" fill="${p.woodDark}"/><path d="M21 35h22M20 44h24" stroke="${p.cream}" stroke-width="3" opacity=".72"/><path d="M32 9v12M25 15l7 7 7-7" fill="none" stroke="${p.leafDark}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`));
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
@@ -71,7 +73,9 @@ const entries = [
   ['ui.selection', 'selection-cursor.svg', 'center'],
   ['crop.turnip.stages', 'crop-turnip.svg', 'bottom-center'],
   ['crop.carrot.stages', 'crop-carrot.svg', 'bottom-center'],
-  ['crop.strawberry.stages', 'crop-strawberry.svg', 'bottom-center']
+  ['crop.strawberry.stages', 'crop-strawberry.svg', 'bottom-center'],
+  ['world.bed', 'world-bed.svg', 'bottom-center'],
+  ['world.shipping-bin', 'world-shipping-bin.svg', 'bottom-center']
 ].map(([id, file, anchor]) => ({ id, file, anchor }));
 const manifest = {
   version: system.version,

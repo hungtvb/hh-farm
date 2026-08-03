@@ -36,7 +36,7 @@ Merged commit `4ca1d1b79f6eb108663b67e19a7540fd96c29d3b` was verified by run `30
 
 ### Slice 2 — coordinate-based starter grid
 
-Draft PR: https://github.com/hungtvb/hh-farm/pull/20
+Merged PR: https://github.com/hungtvb/hh-farm/pull/20
 
 - The starter farm is a stable 5 × 3 grid with coordinates `x=-2..2`, `y=-2..0`.
 - `tutorial-plot` remains serialized first at `(0,0)` for compatibility with existing saves and tests.
@@ -47,11 +47,29 @@ Draft PR: https://github.com/hungtvb/hh-farm/pull/20
 - Grid normalization preserves non-starter tiles so later farm expansion is not truncated.
 - Browser coverage performs the full first crop loop on `starter-plot:-1:0`, proves `tutorial-plot` remains untouched and reloads the same coordinate state.
 
-TON-232 remains open after this slice because day advancement and selling still need an intentional world-interaction decision, and the legacy DOM panel is still the dominant guidance surface.
+Merged commit `1a5fa0a2df7b75e39b5b4070773894760e7cf0c7` was verified by run `30811394497`: TypeScript strict, lint, 147 unit tests, production bundle validation and 14 Chromium browser tests.
+
+### Slice 3 — intentional bed and shipping-bin interactions
+
+Draft PR: https://github.com/hungtvb/hh-farm/pull/21
+
+- World interaction targets are typed as `farm_tile`, `bed` or `shipping_bin`.
+- A pure nearest-facing resolver enforces distance, facing lane and stable tie-breaking.
+- Farm tiles accept only till, plant, water and harvest.
+- Day advancement requires approaching the bed and resolves against the single guided crop tile.
+- Selling requires approaching the shipping bin; pressing action at the farm tile cannot sell.
+- Bed and shipping-bin SVGs are generated through the same deterministic asset pipeline and use bottom-center anchors.
+- Action evidence records exact interaction ID, interaction kind and domain tile ID.
+- Chromium physically travels farm → bed three times → farm → shipping bin, then reloads the completed state.
+- Browser navigation uses short movement samples so the test cannot skip across a valid target between polling frames.
+
+Verify run `30815768030` passed generated map/assets, typed content validation, TypeScript strict, lint, 151 unit tests, production bundle validation and all 14 Chromium browser tests.
+
+TON-232 remains open for one cleanup slice: remove the detached DOM action grid as the primary path while retaining compact guidance/status and compatibility coverage where necessary.
 
 ## Visual evidence
 
-Desktop browser artifacts confirm the authoritative 5 × 3 grid is visible and readable in the world. The legacy tutorial/action card still covers a large part of the farm.
+Desktop browser artifacts confirm the authoritative 5 × 3 grid, bed and shipping bin are visible and the first crop loop can be completed entirely through the Phaser world. The legacy tutorial/action card still covers a large part of the farm.
 
 At 390 × 844, the tutorial card and hotbar dominate the viewport while the Phaser world, player and grid are effectively unreadable. TON-234 is therefore a release-blocking layout rebuild, not optional polish.
 

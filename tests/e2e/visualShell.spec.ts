@@ -47,8 +47,12 @@ async function expectHudReady(
 
   const canvas = page.locator('canvas[data-scene="farm"]');
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveAttribute('data-visual-asset-count', '3');
+  await expect(canvas).toHaveAttribute('data-visual-asset-count', '5');
   await expect(canvas).toHaveAttribute('data-world-farm-tile-count', '15');
+  await expect(canvas).toHaveAttribute(
+    'data-world-interaction-object-count',
+    '2',
+  );
   await expect(canvas).toHaveAttribute(
     'data-visual-prototype',
     'authoritative-farm-grid',

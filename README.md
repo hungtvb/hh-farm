@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-216 — Implement day transition and crop growth lifecycle`
+`TON-217 — Implement inventory, toolbar and item transactions`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands, a generated visual/UI foundation and guarded next-day crop growth.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands, guarded day/crop growth, a generated visual system and a playable inventory/toolbar shell.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ npm run preview
 
 `npm run generate:maps` rebuilds the deterministic map fixture. `npm run generate:assets` rebuilds the generated SVG visual pack and manifest. `npm run validate:assets` checks identity, naming, anchors, SVG structure and byte budget. `npm run validate:content` validates the crop/item/tool/shop catalog.
 
-`npm run check` runs generated-output drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostic exclusion. `npm run test:e2e` rebuilds in the dedicated E2E mode and verifies player lifecycle, crop benchmark, IndexedDB recovery, guarded day transition, build identity and responsive UI in Chromium.
+`npm run check` runs generated-output drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostic exclusion. `npm run test:e2e` rebuilds in the dedicated E2E mode and verifies player lifecycle, crop benchmark, IndexedDB recovery, guarded day transition, inventory interactions, build identity and responsive UI in Chromium.
 
 ## Architecture
 
@@ -42,15 +42,39 @@ public/assets/
 
 src/
 ├── build/           # Immutable build/deployment identity.
-├── domain/          # Pure farming, day, save and benchmark rules.
-├── application/     # Coordinators, use cases and abstract ports.
+├── domain/          # Pure farming, inventory, day, save and benchmark rules.
+├── application/     # Coordinators, presenters, use cases and abstract ports.
 ├── infrastructure/  # Browser adapters such as IndexedDB.
 ├── game/            # Phaser bootstrap, scenes, world and input adapters.
 ├── data/            # Typed content catalogs and map validation.
-└── ui/              # Browser HUD, responsive layout and presenters.
+└── ui/              # Browser HUD, inventory modal and responsive layout.
 ```
 
 Domain and content validation remain isolated from Phaser and browser storage APIs. Application coordinators depend on abstract ports; UI and IndexedDB provide concrete adapters at the edge.
+
+## Inventory and toolbar
+
+`PlayerItemsState` coordinates one authoritative 12-slot inventory with an eight-slot toolbar. Toolbar entries bind by item ID rather than inventory slot, so quantities are derived from inventory and remain correct when stacks change.
+
+Item transactions are atomic:
+
+- additions fill matching stacks before empty slots;
+- capacity is validated before any slot changes;
+- removals require the complete requested quantity;
+- failed transactions preserve the original aggregate;
+- consuming the final item clears every toolbar binding for that item;
+- farming and future shop operations share the same inventory-full behavior.
+
+The starting inventory and stack limits come from the validated content catalog. The DOM HUD receives immutable view models, emits select/bind intents and never edits quantities directly. Vietnamese labels are applied at the presentation boundary without changing catalog identity.
+
+Controls:
+
+- `1–8`: select a toolbar slot;
+- `I`: open or close the inventory;
+- `Escape`: close the inventory;
+- pointer/touch: select a slot and bind an inventory item.
+
+Desktop uses a centered inventory panel. Portrait mobile uses a compact safe-area-aware bottom sheet. See [TON-217 inventory and toolbar contract](docs/inventory/TON-217-inventory-toolbar.md).
 
 ## Day transition and crop growth
 
@@ -139,7 +163,7 @@ After `Verify` succeeds, `Deploy Pages` can publish same-repository pull request
 
 ## Verification
 
-GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, unit tests, production build validation and serialized Chromium runtime tests. Production bundles are scanned to ensure save/day-transition diagnostics are absent.
+GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, 95 unit tests across 18 files, production build validation and 11 serialized Chromium runtime tests. Browser evidence covers keyboard/pointer inventory binding, mobile touch interaction, compact portrait composition and all existing player, benchmark, day-transition, save-recovery and visual-shell regressions. Production bundles are scanned to ensure save/day-transition diagnostics are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production loading budgets are tracked by `TON-224`.
 

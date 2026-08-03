@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "sourceScale": {
+    "tileWidth": 64,
+    "tileHeight": 64,
+    "playerFrameWidth": 64,
+    "playerFrameHeight": 80,
+    "uiIconSize": 64
+  },
+  "loadGroups": {
+    "farm-world": {
+      "budgetBytes": 180000,
+      "assets": [
+        "environment.grass",
+        "environment.soil.untilled",
+        "environment.soil.tilled",
+        "environment.soil.watered",
+        "environment.water",
+        "environment.wood"
+      ]
+    },
+    "player": {
+      "budgetBytes": 240000,
+      "assets": [
+        "player.idle",
+        "player.walk",
+        "player.hoe",
+        "player.water",
+        "player.harvest"
+      ]
+    },
+    "crops": {
+      "budgetBytes": 140000,
+      "assets": [
+        "crop.turnip.stages",
+        "crop.carrot.stages",
+        "crop.strawberry.stages"
+      ]
+    },
+    "ui": {
+      "budgetBytes": 120000,
+      "assets": [
+        "ui.coin",
+        "ui.day",
+        "ui.energy",
+        "ui.toolbar",
+        "ui.inventory",
+        "ui.selection"
+      ]
+    }
+  },
+  "anchors": {
+    "player": {
+      "x": 0.5,
+      "y": 1,
+      "footY": 72,
+      "collision": {
+        "width": 24,
+        "height": 14,
+        "offsetX": 20,
+        "offsetY": 62
+      }
+    },
+    "crop": {
+      "x": 0.5,
+      "y": 1,
+      "footY": 58
+    },
+    "environment": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "directions": ["down", "left", "right", "up"],
+  "animations": {
+    "player.idle": {
+      "framesPerDirection": 4,
+      "frameDurationMs": 280,
+      "loop": true,
+      "impactFrameIndex": null
+    },
+    "player.walk": {
+      "framesPerDirection": 6,
+      "frameDurationMs": 110,
+      "loop": true,
+      "impactFrameIndex": null
+    },
+    "player.hoe": {
+      "framesPerDirection": 5,
+      "frameDurationMs": 90,
+      "loop": false,
+      "impactFrameIndex": 2
+    },
+    "player.water": {
+      "framesPerDirection": 6,
+      "frameDurationMs": 90,
+      "loop": false,
+      "impactFrameIndex": 3
+    },
+    "player.harvest": {
+      "framesPerDirection": 5,
+      "frameDurationMs": 85,
+      "loop": false,
+      "impactFrameIndex": 2
+    }
+  },
+  "cropStages": {
+    "turnip": 4,
+    "carrot": 4,
+    "strawberry": 4
+  },
+  "qualityRules": {
+    "requiredSilhouetteDifferenceRatio": 0.12,
+    "maximumTransparentPadding": 8,
+    "maximumOutlineWidth": 3,
+    "toolAnticipationMinMs": 80,
+    "toolAnticipationMaxMs": 120,
+    "ySortAnchorTolerancePx": 0,
+    "allowHorizontalMirror": true,
+    "mirrorToolActions": false
+  }
+}

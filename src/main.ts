@@ -3,6 +3,7 @@ import './ui/mobileLayout.css';
 import './ui/inventoryUi.css';
 import './ui/shopUi.css';
 import './ui/farmLoopUi.css';
+import './ui/settingsUi.css';
 import { exposeBuildInfo } from './build/buildInfo';
 import { mountGameExperience } from './ui/mountGameExperience';
 

@@ -10,6 +10,7 @@ export type CropInstance = Readonly<{
   cropId: string;
   plantedDay: number;
   growthStageIndex: number;
+  growthProgressDays: number;
   harvestQuantity: number;
 }>;
 
@@ -152,15 +153,40 @@ export function createCropInstance(input: {
     cropId,
     plantedDay: input.plantedDay,
     growthStageIndex: 0,
+    growthProgressDays: 0,
     harvestQuantity: input.harvestQuantity,
+  });
+}
+
+export function createUpdatedCropInstance(
+  crop: CropInstance,
+  update: Partial<Pick<CropInstance, 'growthProgressDays' | 'growthStageIndex'>>,
+): CropInstance {
+  const growthStageIndex = update.growthStageIndex ?? crop.growthStageIndex;
+  const growthProgressDays =
+    update.growthProgressDays ?? crop.growthProgressDays;
+
+  if (!Number.isInteger(growthStageIndex) || growthStageIndex < 0) {
+    throw new Error('Crop growthStageIndex must be a non-negative integer.');
+  }
+
+  if (!Number.isInteger(growthProgressDays) || growthProgressDays < 0) {
+    throw new Error('Crop growthProgressDays must be a non-negative integer.');
+  }
+
+  return Object.freeze({
+    instanceId: crop.instanceId,
+    cropId: crop.cropId,
+    plantedDay: crop.plantedDay,
+    growthStageIndex,
+    growthProgressDays,
+    harvestQuantity: crop.harvestQuantity,
   });
 }
 
 export function createUpdatedFarmTile(
   tile: FarmTileState,
-  update: Partial<
-    Pick<FarmTileState, 'crop' | 'soil' | 'watered'>
-  >,
+  update: Partial<Pick<FarmTileState, 'crop' | 'soil' | 'watered'>>,
 ): FarmTileState {
   return Object.freeze({
     id: tile.id,

@@ -10,7 +10,7 @@ export type CropInstance = Readonly<{
   cropId: string;
   plantedDay: number;
   growthStageIndex: number;
-  growthProgressDays: number;
+  growthProgressDays?: number;
   harvestQuantity: number;
 }>;
 
@@ -153,9 +153,12 @@ export function createCropInstance(input: {
     cropId,
     plantedDay: input.plantedDay,
     growthStageIndex: 0,
-    growthProgressDays: 0,
     harvestQuantity: input.harvestQuantity,
   });
+}
+
+export function getCropGrowthProgressDays(crop: CropInstance): number {
+  return crop.growthProgressDays ?? 0;
 }
 
 export function createUpdatedCropInstance(
@@ -164,7 +167,7 @@ export function createUpdatedCropInstance(
 ): CropInstance {
   const growthStageIndex = update.growthStageIndex ?? crop.growthStageIndex;
   const growthProgressDays =
-    update.growthProgressDays ?? crop.growthProgressDays;
+    update.growthProgressDays ?? getCropGrowthProgressDays(crop);
 
   if (!Number.isInteger(growthStageIndex) || growthStageIndex < 0) {
     throw new Error('Crop growthStageIndex must be a non-negative integer.');

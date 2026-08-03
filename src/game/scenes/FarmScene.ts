@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import type { FarmLoopTutorialAction } from '../../application/farmLoop/farmLoopCoordinator';
 import {
+  STARTER_FARM_TILE_DEFINITIONS,
   TUTORIAL_TILE_ID,
   type FarmLoopState,
 } from '../../application/farmLoop/farmLoopState';
-import { getFarmTile } from '../../domain/farming/farmTileState';
+import {
+  getFarmTile,
+  type FarmTileState,
+} from '../../domain/farming/farmTileState';
 import { VISUAL_TEXTURE_KEYS } from '../assets/visualAssets';
 import { createPlayerTextures } from '../player/createPlayerTextures';
 import { createPlayerCollisionWorld } from '../player/collisionWorld';
@@ -21,12 +25,21 @@ const ACTION_KEY_CODES = [
   Phaser.Input.Keyboard.KeyCodes.SPACE,
 ] as const;
 const TARGET_DISTANCE = 84;
-const TARGET_FORWARD_TOLERANCE = 20;
+const TARGET_FORWARD_TOLERANCE = 24;
 const TILE_DISPLAY_SIZE = 58;
+const TILE_SPACING = 64;
 const CROP_STAGE_SIZE = 64;
 
 let farmSceneCreateCount = 0;
 let farmSceneShutdownCount = 0;
+
+type FarmTileVisual = Readonly<{
+  tileId: string;
+  position: Phaser.Math.Vector2;
+  soil: Phaser.GameObjects.Image;
+  crop: Phaser.GameObjects.Image;
+  selection: Phaser.GameObjects.Image;
+}>;
 
 function recommendedAction(
   step: FarmLoopState['tutorial']['step'],
@@ -45,15 +58,22 @@ function recommendedAction(
   return undefined;
 }
 
+function soilTextureFor(tile: FarmTileState): string {
+  if (tile.watered) {
+    return VISUAL_TEXTURE_KEYS.soilWatered;
+  }
+
+  return tile.soil === 'tilled'
+    ? VISUAL_TEXTURE_KEYS.soilTilled
+    : VISUAL_TEXTURE_KEYS.soilUntilled;
+}
+
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
   private farmRuntime: FarmGameRuntime | undefined;
   private actionKeys: Phaser.Input.Keyboard.Key[] = [];
-  private soilVisual: Phaser.GameObjects.Image | undefined;
-  private cropVisual: Phaser.GameObjects.Image | undefined;
-  private selectionVisual: Phaser.GameObjects.Image | undefined;
+  private readonly farmTileVisuals = new Map<string, FarmTileVisual>();
   private actionHint: Phaser.GameObjects.Text | undefined;
-  private tutorialTilePosition: Phaser.Math.Vector2 | undefined;
   private lastRenderedState: FarmLoopState | undefined;
   private actionPending = false;
 
@@ -97,11 +117,11 @@ export class FarmScene extends Phaser.Scene {
       throw new Error('Farm map requires one farmable region.');
     }
 
-    this.tutorialTilePosition = new Phaser.Math.Vector2(
+    const tutorialTilePosition = new Phaser.Math.Vector2(
       farmableRegion.x + farmableRegion.width / 2,
       farmableRegion.y + farmableRegion.height - 32,
     );
-    this.createAuthoritativeTutorialTile(this.tutorialTilePosition);
+    this.createAuthoritativeFarmGrid(tutorialTilePosition);
 
     this.farmRuntime = requireFarmGameRuntime(
       this.game.registry.get(FARM_GAME_RUNTIME_REGISTRY_KEY),
@@ -151,24 +171,44 @@ export class FarmScene extends Phaser.Scene {
     this.updateTargetFeedback();
   }
 
-  private createAuthoritativeTutorialTile(position: Phaser.Math.Vector2): void {
-    this.soilVisual = this.add
-      .image(position.x, position.y, VISUAL_TEXTURE_KEYS.soilUntilled)
-      .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
-      .setDepth(position.y);
-    this.cropVisual = this.add
-      .image(position.x, position.y, VISUAL_TEXTURE_KEYS.cropTurnipStages)
-      .setCrop(0, 0, CROP_STAGE_SIZE, CROP_STAGE_SIZE)
-      .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
-      .setDepth(position.y + 1)
-      .setVisible(false);
-    this.selectionVisual = this.add
-      .image(position.x, position.y, VISUAL_TEXTURE_KEYS.selectionCursor)
-      .setDisplaySize(62, 62)
-      .setAlpha(0.3)
-      .setDepth(position.y + 2);
+  private createAuthoritativeFarmGrid(
+    tutorialTilePosition: Phaser.Math.Vector2,
+  ): void {
+    for (const definition of STARTER_FARM_TILE_DEFINITIONS) {
+      const position = new Phaser.Math.Vector2(
+        tutorialTilePosition.x + definition.x * TILE_SPACING,
+        tutorialTilePosition.y + definition.y * TILE_SPACING,
+      );
+      const soil = this.add
+        .image(position.x, position.y, VISUAL_TEXTURE_KEYS.soilUntilled)
+        .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
+        .setDepth(position.y);
+      const crop = this.add
+        .image(position.x, position.y, VISUAL_TEXTURE_KEYS.cropTurnipStages)
+        .setCrop(0, 0, CROP_STAGE_SIZE, CROP_STAGE_SIZE)
+        .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
+        .setDepth(position.y + 1)
+        .setVisible(false);
+      const selection = this.add
+        .image(position.x, position.y, VISUAL_TEXTURE_KEYS.selectionCursor)
+        .setDisplaySize(62, 62)
+        .setAlpha(0.16)
+        .setDepth(position.y + 2);
+
+      this.farmTileVisuals.set(
+        definition.id,
+        Object.freeze({
+          tileId: definition.id,
+          position,
+          soil,
+          crop,
+          selection,
+        }),
+      );
+    }
+
     this.actionHint = this.add
-      .text(position.x, position.y - 46, 'E', {
+      .text(tutorialTilePosition.x, tutorialTilePosition.y - 46, 'E', {
         color: '#1f3b28',
         backgroundColor: '#fff8dc',
         fontFamily: 'system-ui, sans-serif',
@@ -177,12 +217,15 @@ export class FarmScene extends Phaser.Scene {
         padding: { x: 8, y: 4 },
       })
       .setOrigin(0.5)
-      .setDepth(position.y + 3)
+      .setDepth(tutorialTilePosition.y + 3)
       .setVisible(false);
 
     this.game.canvas.dataset.visualAssetCount = '3';
-    this.game.canvas.dataset.visualPrototype = 'authoritative-tutorial-tile';
+    this.game.canvas.dataset.visualPrototype = 'authoritative-farm-grid';
     this.game.canvas.dataset.worldFarmTileId = TUTORIAL_TILE_ID;
+    this.game.canvas.dataset.worldFarmTileCount = String(
+      STARTER_FARM_TILE_DEFINITIONS.length,
+    );
   }
 
   private drawWorldDiagnostics(
@@ -223,67 +266,133 @@ export class FarmScene extends Phaser.Scene {
     }
     this.lastRenderedState = state;
 
-    const tile = getFarmTile(state.field, TUTORIAL_TILE_ID);
-    if (tile === undefined) {
+    for (const [tileId, visual] of this.farmTileVisuals) {
+      const tile = getFarmTile(state.field, tileId);
+      if (tile === undefined) {
+        throw new Error(`Missing authoritative tile "${tileId}".`);
+      }
+
+      visual.soil.setTexture(soilTextureFor(tile));
+      if (tile.crop === null) {
+        visual.crop.setVisible(false);
+      } else {
+        visual.crop
+          .setCrop(
+            Math.min(tile.crop.growthStageIndex, 3) * CROP_STAGE_SIZE,
+            0,
+            CROP_STAGE_SIZE,
+            CROP_STAGE_SIZE,
+          )
+          .setVisible(true);
+      }
+    }
+
+    const tutorialTile = getFarmTile(state.field, TUTORIAL_TILE_ID);
+    if (tutorialTile === undefined) {
       throw new Error(`Missing authoritative tile "${TUTORIAL_TILE_ID}".`);
     }
 
-    const soilTexture = tile.watered
-      ? VISUAL_TEXTURE_KEYS.soilWatered
-      : tile.soil === 'tilled'
-        ? VISUAL_TEXTURE_KEYS.soilTilled
-        : VISUAL_TEXTURE_KEYS.soilUntilled;
-    this.soilVisual?.setTexture(soilTexture);
-
-    const crop = tile.crop;
-    if (crop === null) {
-      this.cropVisual?.setVisible(false);
-    } else {
-      this.cropVisual
-        ?.setCrop(
-          Math.min(crop.growthStageIndex, 3) * CROP_STAGE_SIZE,
-          0,
-          CROP_STAGE_SIZE,
-          CROP_STAGE_SIZE,
-        )
-        .setVisible(true);
-    }
-
     const canvas = this.game.canvas;
-    canvas.dataset.worldSoil = tile.soil;
-    canvas.dataset.worldWatered = String(tile.watered);
-    canvas.dataset.worldCropStage = crop === null
-      ? 'none'
-      : String(crop.growthStageIndex);
+    canvas.dataset.worldSoil = tutorialTile.soil;
+    canvas.dataset.worldWatered = String(tutorialTile.watered);
+    canvas.dataset.worldCropStage =
+      tutorialTile.crop === null
+        ? 'none'
+        : String(tutorialTile.crop.growthStageIndex);
     canvas.dataset.worldTutorialStep = state.tutorial.step;
     canvas.dataset.worldDay = String(state.farm.day);
     canvas.dataset.worldCoins = String(state.economy.wallet.coins);
+    canvas.dataset.worldTilledTileCount = String(
+      state.field.tiles.filter((tile) => tile.soil === 'tilled').length,
+    );
+    canvas.dataset.worldCropTileCount = String(
+      state.field.tiles.filter((tile) => tile.crop !== null).length,
+    );
   }
 
   private updateTargetFeedback(): void {
-    const ready = this.isTutorialTileTargeted();
-    this.selectionVisual?.setAlpha(ready ? 0.98 : 0.3);
+    const targetTileId = this.resolveTargetedFarmTileId();
+    for (const visual of this.farmTileVisuals.values()) {
+      visual.selection.setAlpha(visual.tileId === targetTileId ? 0.98 : 0.16);
+    }
+
     const action = recommendedAction(
       this.farmRuntime?.getState().tutorial.step ?? 'completed',
     );
-    this.actionHint?.setVisible(ready && action !== undefined);
-    this.game.canvas.dataset.worldTargetReady = String(ready);
-  }
-
-  private isTutorialTileTargeted(): boolean {
-    const player = this.playerController;
-    const target = this.tutorialTilePosition;
-    if (player === undefined || target === undefined) {
-      return false;
+    const targetVisual =
+      targetTileId === undefined
+        ? undefined
+        : this.farmTileVisuals.get(targetTileId);
+    this.actionHint?.setVisible(
+      targetVisual !== undefined && action !== undefined,
+    );
+    if (targetVisual !== undefined) {
+      this.actionHint
+        ?.setPosition(targetVisual.position.x, targetVisual.position.y - 46)
+        .setDepth(targetVisual.position.y + 3);
     }
 
-    const dx = target.x - player.sprite.x;
-    const dy = target.y - player.sprite.y;
-    if (Math.hypot(dx, dy) > TARGET_DISTANCE) {
-      return false;
+    const canvas = this.game.canvas;
+    canvas.dataset.worldTargetReady = String(targetTileId !== undefined);
+    if (targetTileId === undefined) {
+      delete canvas.dataset.worldTargetTileId;
+      delete canvas.dataset.worldTargetSoil;
+      delete canvas.dataset.worldTargetWatered;
+      delete canvas.dataset.worldTargetCropStage;
+      return;
+    }
+
+    canvas.dataset.worldTargetTileId = targetTileId;
+    const runtime = this.farmRuntime;
+    const targetTile =
+      runtime === undefined
+        ? undefined
+        : getFarmTile(runtime.getState().field, targetTileId);
+    if (targetTile !== undefined) {
+      canvas.dataset.worldTargetSoil = targetTile.soil;
+      canvas.dataset.worldTargetWatered = String(targetTile.watered);
+      canvas.dataset.worldTargetCropStage =
+        targetTile.crop === null
+          ? 'none'
+          : String(targetTile.crop.growthStageIndex);
+    }
+  }
+
+  private resolveTargetedFarmTileId(): string | undefined {
+    const player = this.playerController;
+    if (player === undefined) {
+      return undefined;
     }
 
     const facing = player.getFacingDirection();
+    let closest:
+      | Readonly<{ tileId: string; distance: number }>
+      | undefined;
+
+    for (const visual of this.farmTileVisuals.values()) {
+      const dx = visual.position.x - player.sprite.x;
+      const dy = visual.position.y - player.sprite.y;
+      const distance = Math.hypot(dx, dy);
+      if (
+        distance > TARGET_DISTANCE ||
+        !this.isInsideFacingLane(dx, dy, facing)
+      ) {
+        continue;
+      }
+
+      if (closest === undefined || distance < closest.distance) {
+        closest = Object.freeze({ tileId: visual.tileId, distance });
+      }
+    }
+
+    return closest?.tileId;
+  }
+
+  private isInsideFacingLane(
+    dx: number,
+    dy: number,
+    facing: ReturnType<PlayerController['getFacingDirection']>,
+  ): boolean {
     if (facing === 'up') {
       return dy <= 0 && Math.abs(dx) <= TARGET_FORWARD_TOLERANCE;
     }
@@ -298,7 +407,8 @@ export class FarmScene extends Phaser.Scene {
 
   private async performRecommendedAction(): Promise<void> {
     const runtime = this.farmRuntime;
-    if (runtime === undefined || !this.isTutorialTileTargeted()) {
+    const targetTileId = this.resolveTargetedFarmTileId();
+    if (runtime === undefined || targetTileId === undefined) {
       return;
     }
 
@@ -310,8 +420,9 @@ export class FarmScene extends Phaser.Scene {
     this.actionPending = true;
     this.game.canvas.dataset.worldActionPending = 'true';
     try {
-      const result = await runtime.perform(action, TUTORIAL_TILE_ID);
+      const result = await runtime.perform(action, targetTileId);
       this.game.canvas.dataset.worldLastAction = action;
+      this.game.canvas.dataset.worldLastActionTileId = targetTileId;
       this.game.canvas.dataset.worldLastResult = result.status;
       if ('code' in result) {
         this.game.canvas.dataset.worldLastFailure = result.code;
@@ -319,6 +430,7 @@ export class FarmScene extends Phaser.Scene {
         delete this.game.canvas.dataset.worldLastFailure;
       }
       this.renderFarmState(true);
+      this.updateTargetFeedback();
     } finally {
       this.actionPending = false;
       this.game.canvas.dataset.worldActionPending = 'false';
@@ -337,11 +449,8 @@ export class FarmScene extends Phaser.Scene {
       key.off('down', this.handleActionInput);
     }
     this.actionKeys = [];
-    this.soilVisual = undefined;
-    this.cropVisual = undefined;
-    this.selectionVisual = undefined;
+    this.farmTileVisuals.clear();
     this.actionHint = undefined;
-    this.tutorialTilePosition = undefined;
     this.lastRenderedState = undefined;
     this.actionPending = false;
   };

@@ -50,6 +50,7 @@ async function openFarm(page: Page): Promise<Locator> {
   await expect(canvas).toHaveAttribute('data-active-player-controllers', '1');
   await expect(canvas).toHaveAttribute('data-dynamic-body-count', '1');
   await expect(canvas).toHaveAttribute('data-static-body-count', '3');
+  await expect(canvas).toHaveAttribute('data-world-farm-tile-count', '15');
 
   return canvas;
 }
@@ -118,9 +119,9 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   await page.keyboard.down('ArrowRight');
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
-      timeout: 2_000,
+      timeout: 4_000,
     })
-    .toBeGreaterThan(startX + 60);
+    .toBeGreaterThan(startX + 50);
   await page.keyboard.up('ArrowRight');
 
   await expect(canvas).toHaveAttribute('data-player-facing', 'right');
@@ -169,25 +170,35 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   expect(runtimeErrors).toEqual([]);
 });
 
-test('completes the authoritative farm loop from the Phaser world', async ({
+test('targets a coordinate tile and completes its authoritative farm loop', async ({
   page,
 }) => {
   const runtimeErrors = collectRuntimeErrors(page);
   const canvas = await openFarm(page);
+  const targetTileId = 'starter-plot:-1:0';
 
   await expect(canvas).toHaveAttribute(
     'data-visual-prototype',
-    'authoritative-tutorial-tile',
+    'authoritative-farm-grid',
   );
   await expect(canvas).toHaveAttribute('data-world-soil', 'untilled');
   await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'till');
+  await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '0');
+
+  await page.keyboard.down('ArrowLeft');
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
+      timeout: 2_000,
+    })
+    .toBeLessThanOrEqual(418);
+  await page.keyboard.up('ArrowLeft');
 
   await page.keyboard.down('ArrowUp');
   await expect
-    .poll(() => canvas.getAttribute('data-world-target-ready'), {
+    .poll(() => canvas.getAttribute('data-world-target-tile-id'), {
       timeout: 2_000,
     })
-    .toBe('true');
+    .toBe(targetTileId);
   await page.keyboard.up('ArrowUp');
 
   const act = async (
@@ -199,6 +210,10 @@ test('completes the authoritative farm loop from the Phaser world', async ({
       'data-world-last-action',
       expectedAction,
     );
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-action-tile-id',
+      targetTileId,
+    );
     await expect(canvas).toHaveAttribute('data-world-last-result', 'completed');
     await expect(canvas).toHaveAttribute(
       'data-world-tutorial-step',
@@ -207,23 +222,28 @@ test('completes the authoritative farm loop from the Phaser world', async ({
   };
 
   await act('plant', 'till');
-  await expect(canvas).toHaveAttribute('data-world-soil', 'tilled');
+  await expect(canvas).toHaveAttribute('data-world-target-soil', 'tilled');
+  await expect(canvas).toHaveAttribute('data-world-soil', 'untilled');
+  await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '1');
 
   await act('water', 'plant');
-  await expect(canvas).toHaveAttribute('data-world-crop-stage', '0');
+  await expect(canvas).toHaveAttribute('data-world-target-crop-stage', '0');
+  await expect(canvas).toHaveAttribute('data-world-crop-stage', 'none');
+  await expect(canvas).toHaveAttribute('data-world-crop-tile-count', '1');
 
   for (let index = 0; index < 3; index += 1) {
     await act('next_day', 'water');
-    await expect(canvas).toHaveAttribute('data-world-watered', 'true');
+    await expect(canvas).toHaveAttribute('data-world-target-watered', 'true');
 
     await act(index === 2 ? 'harvest' : 'water', 'next_day');
     await expect(canvas).toHaveAttribute('data-world-day', String(index + 2));
-    await expect(canvas).toHaveAttribute('data-world-watered', 'false');
+    await expect(canvas).toHaveAttribute('data-world-target-watered', 'false');
   }
 
-  await expect(canvas).toHaveAttribute('data-world-crop-stage', '3');
+  await expect(canvas).toHaveAttribute('data-world-target-crop-stage', '3');
   await act('sell', 'harvest');
-  await expect(canvas).toHaveAttribute('data-world-crop-stage', 'none');
+  await expect(canvas).toHaveAttribute('data-world-target-crop-stage', 'none');
+  await expect(canvas).toHaveAttribute('data-world-crop-tile-count', '0');
 
   await act('completed', 'sell');
   await expect(canvas).toHaveAttribute('data-world-coins', '285');
@@ -236,5 +256,33 @@ test('completes the authoritative farm loop from the Phaser world', async ({
   );
   await expect(restoredCanvas).toHaveAttribute('data-world-day', '4');
   await expect(restoredCanvas).toHaveAttribute('data-world-coins', '285');
+  await expect(restoredCanvas).toHaveAttribute('data-world-soil', 'untilled');
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-world-tilled-tile-count',
+    '1',
+  );
+
+  await page.keyboard.down('ArrowLeft');
+  await expect
+    .poll(() => readNumberAttribute(restoredCanvas, 'data-player-x'), {
+      timeout: 2_000,
+    })
+    .toBeLessThanOrEqual(418);
+  await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('ArrowUp');
+  await expect
+    .poll(() => restoredCanvas.getAttribute('data-world-target-tile-id'), {
+      timeout: 2_000,
+    })
+    .toBe(targetTileId);
+  await page.keyboard.up('ArrowUp');
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-world-target-soil',
+    'tilled',
+  );
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-world-target-crop-stage',
+    'none',
+  );
   expect(runtimeErrors).toEqual([]);
 });

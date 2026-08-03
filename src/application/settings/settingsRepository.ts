@@ -97,12 +97,13 @@ export class SettingsRepository {
     return Object.freeze({ status: 'loaded', settings: decoded });
   }
 
-  public save(settings: PlayerSettings): void {
+  public save(settings: PlayerSettings): Promise<void> {
     const envelope: PlayerSettingsEnvelope = Object.freeze({
       schemaVersion: PLAYER_SETTINGS_SCHEMA_VERSION,
       settings,
     });
     this.storage.write(JSON.stringify(envelope));
+    return Promise.resolve();
   }
 
   public reset(): void {

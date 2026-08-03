@@ -94,3 +94,16 @@ Desktop browser artifacts confirm the authoritative 5 × 3 grid, bed and shippin
 At 390 × 844, the tutorial card and hotbar dominate the viewport while the Phaser world, player and grid are effectively unreadable. TON-234 is therefore a release-blocking layout rebuild, not optional polish.
 
 The Vercel URL remains an internal preview until TON-236 is complete.
+
+### TON-238 — world-first portrait layout
+
+Implementation branch: `feat/ton-238-mobile-world-first`.
+
+- Portrait removes the detached mini-plot, stats grid and six farm action buttons from the visible gameplay surface; those DOM elements remain only for desktop compatibility while direct world touch is the production mobile path.
+- The duplicate static objective card is hidden in portrait.
+- A compact two-line guidance strip sits inside the safe area and does not intercept world input; only the 44 px Skip control remains interactive.
+- The Phaser surface expands to 120% viewport width and is intentionally cropped around the followed player, increasing readable world scale without changing the 640×360 simulation or save state.
+- Tutorial hints now instruct the player to tap the plot, bed or shipping bin rather than manually steering into an exact facing lane.
+- Mobile E2E asserts the compact layout, enlarged canvas and direct-manipulation contract while preserving the full touch-only farm loop.
+
+This is a layout stabilization slice, not final art polish. Inventory, shop and settings remain modal sheets, and real iPhone Safari safe-area/browser-chrome validation is still required.

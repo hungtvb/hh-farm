@@ -312,3 +312,76 @@
     animation: none;
   }
 }
+
+@media (max-width: 840px) and (orientation: portrait) {
+  .hh-farm-loop {
+    position: absolute;
+    top: max(74px, calc(env(safe-area-inset-top) + 62px));
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
+    z-index: 18;
+    width: auto;
+    margin: 0;
+    gap: 4px;
+    padding: 8px 10px;
+    border-width: 2px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--hh-cream, #fff4d6) 88%, transparent);
+    box-shadow:
+      0 4px 0 color-mix(in srgb, var(--hh-wood-dark, #7b4e2e) 82%, black),
+      0 10px 24px color-mix(in srgb, var(--hh-shadow, #263a2b) 22%, transparent);
+    pointer-events: none;
+    backdrop-filter: blur(12px);
+  }
+
+  .hh-farm-loop__tutorial {
+    min-height: 44px;
+    gap: 2px;
+    align-content: center;
+    padding-right: 82px;
+  }
+
+  .hh-farm-loop__eyebrow,
+  .hh-farm-loop__stage,
+  .hh-farm-loop__actions {
+    display: none;
+  }
+
+  .hh-farm-loop__objective {
+    overflow: hidden;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hh-farm-loop__hint {
+    overflow: hidden;
+    font-size: 0.66rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hh-farm-loop__skip {
+    top: 50%;
+    min-width: 72px;
+    min-height: 44px;
+    padding: 6px 10px;
+    font-size: 0.62rem;
+    pointer-events: auto;
+    touch-action: manipulation;
+    transform: translateY(-50%);
+  }
+
+  .hh-farm-loop__feedback {
+    display: none;
+    min-height: 0;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+  }
+
+  .hh-farm-loop[data-last-result] .hh-farm-loop__feedback {
+    display: block;
+  }
+}

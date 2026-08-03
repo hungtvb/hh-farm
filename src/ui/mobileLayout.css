@@ -1,29 +1,29 @@
 @media (max-width: 840px) and (orientation: portrait) {
   #game-root {
-    top: 76px;
-    right: 0;
-    bottom: auto;
-    left: 0;
-    height: min(56.25vw, calc(100vh - 270px));
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: -10vw;
+    width: 120vw;
+    min-width: 0;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
   }
 
   #game-root canvas {
-    margin: 0 auto !important;
+    max-width: none !important;
+    margin: auto !important;
   }
 
   .hh-action-prompt {
-    top: calc(76px + min(56.25vw, calc(100vh - 270px)) + 12px);
-    bottom: auto;
+    display: none;
   }
 }
 
 @media (max-width: 480px) and (orientation: portrait) {
   #game-root {
-    top: 72px;
-    height: min(56.25vw, calc(100vh - 245px));
-  }
-
-  .hh-action-prompt {
-    top: calc(72px + min(56.25vw, calc(100vh - 245px)) + 10px);
+    left: -10vw;
+    width: 120vw;
   }
 }

@@ -146,6 +146,26 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       const settings = page.locator('.hh-settings-modal');
 
       await expect(loop).toBeVisible({ timeout: 10_000 });
+      await expect(loop).toHaveAttribute(
+        'data-interaction-mode',
+        'direct-manipulation',
+      );
+      await expect(page.locator('.hh-farm-loop__stage')).toBeHidden();
+      await expect(page.locator('.hh-farm-loop__actions')).toBeHidden();
+      await expect(page.locator('.hh-action-prompt')).toBeHidden();
+
+      const loopBox = await loop.boundingBox();
+      const canvasBox = await page
+        .locator('canvas[data-scene="farm"]')
+        .boundingBox();
+      expect(loopBox).not.toBeNull();
+      expect(canvasBox).not.toBeNull();
+      if (loopBox !== null && canvasBox !== null) {
+        expect(loopBox.height).toBeLessThan(120);
+        expect(canvasBox.width).toBeGreaterThan(440);
+        expect(loopBox.y + loopBox.height).toBeLessThan(canvasBox.y);
+      }
+
       await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
 
       await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');

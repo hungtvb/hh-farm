@@ -108,16 +108,29 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
   await expectInsideViewport(page.locator('.hh-topbar'), 390, 844);
   await expectInsideViewport(page.locator('.hh-hotbar'), 390, 844);
 
-  const canvasBox = await page.locator('canvas[data-scene="farm"]').boundingBox();
-  const promptBox = await page.locator('.hh-action-prompt').boundingBox();
-  expect(canvasBox).not.toBeNull();
-  expect(promptBox).not.toBeNull();
+  const canvas = page.locator('canvas[data-scene="farm"]');
+  const compactGuide = page.locator('.hh-farm-loop[data-ready="true"]');
+  const canvasBox = await canvas.boundingBox();
+  const guideBox = await compactGuide.boundingBox();
 
-  if (canvasBox !== null && promptBox !== null) {
-    expect(canvasBox.y).toBeLessThan(110);
-    expect(promptBox.y).toBeGreaterThanOrEqual(
-      canvasBox.y + canvasBox.height + 8,
-    );
+  await expect(page.locator('.hh-action-prompt')).toBeHidden();
+  await expect(page.locator('.hh-farm-loop__stage')).toBeHidden();
+  await expect(page.locator('.hh-farm-loop__actions')).toBeHidden();
+  await expect(compactGuide).toHaveAttribute(
+    'data-interaction-mode',
+    'direct-manipulation',
+  );
+  await expectInsideViewport(compactGuide, 390, 844);
+
+  expect(canvasBox).not.toBeNull();
+  expect(guideBox).not.toBeNull();
+
+  if (canvasBox !== null && guideBox !== null) {
+    expect(canvasBox.width).toBeGreaterThan(440);
+    expect(canvasBox.height).toBeGreaterThan(245);
+    expect(canvasBox.x).toBeLessThan(0);
+    expect(guideBox.height).toBeLessThan(120);
+    expect(guideBox.y + guideBox.height).toBeLessThan(canvasBox.y);
   }
 
   await page.screenshot({

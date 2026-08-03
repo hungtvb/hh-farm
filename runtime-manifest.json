@@ -1,0 +1,6 @@
+{
+  "sourceBranch": "main",
+  "sourceSha": "641671a096fa9b7944276c6512caf203e36297f6",
+  "deploymentUrl": "https://hh-farm.vercel.app",
+  "artifact": "hh-farm-runtime.tar.gz"
+}

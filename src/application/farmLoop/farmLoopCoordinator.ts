@@ -36,7 +36,7 @@ import {
   type FarmLoopState,
 } from './farmLoopState.js';
 
-export type FarmLoopAction =
+export type FarmLoopTutorialAction =
   | 'harvest'
   | 'next_day'
   | 'plant'
@@ -44,6 +44,14 @@ export type FarmLoopAction =
   | 'skip_tutorial'
   | 'till'
   | 'water';
+
+export type FarmLoopExternalAction =
+  | 'bind_toolbar'
+  | 'select_toolbar'
+  | 'shop_buy'
+  | 'shop_sell';
+
+export type FarmLoopAction = FarmLoopTutorialAction | FarmLoopExternalAction;
 
 export type FarmLoopEvent =
   | FarmingDomainEvent
@@ -185,7 +193,29 @@ export class FarmLoopCoordinator {
     return this.state;
   }
 
-  public async perform(action: FarmLoopAction): Promise<FarmLoopResult> {
+  public perform(action: FarmLoopTutorialAction): Promise<FarmLoopResult> {
+    return this.execute(action, () => this.resolve(action));
+  }
+
+  public commitExternal(
+    action: FarmLoopExternalAction,
+    candidate: FarmLoopState,
+    events: readonly FarmLoopEvent[] = Object.freeze([]),
+  ): Promise<FarmLoopResult> {
+    return this.execute(action, () =>
+      Object.freeze({
+        status: 'completed' as const,
+        action,
+        state: candidate,
+        events: Object.freeze([...events]),
+      }),
+    );
+  }
+
+  private async execute(
+    action: FarmLoopAction,
+    resolve: () => FarmLoopResult,
+  ): Promise<FarmLoopResult> {
     if (this.actionInProgress) {
       const result = Object.freeze({
         status: 'action_in_progress' as const,
@@ -201,7 +231,7 @@ export class FarmLoopCoordinator {
     this.actionInProgress = true;
 
     try {
-      const resolved = this.resolve(action);
+      const resolved = resolve();
       if (resolved.status !== 'completed') {
         await this.presentation.present(resolved);
         return resolved;
@@ -229,7 +259,7 @@ export class FarmLoopCoordinator {
     }
   }
 
-  private resolve(action: FarmLoopAction): FarmLoopResult {
+  private resolve(action: FarmLoopTutorialAction): FarmLoopResult {
     if (action === 'skip_tutorial') {
       const tutorial = skipTutorial(this.state.tutorial);
       const candidate = createFarmLoopState({
@@ -311,7 +341,7 @@ export class FarmLoopCoordinator {
   }
 
   private fromFarmingResult(
-    action: FarmLoopAction,
+    action: FarmLoopTutorialAction,
     result: PlayerFarmingResult,
   ): FarmLoopResult {
     if (!result.ok) {

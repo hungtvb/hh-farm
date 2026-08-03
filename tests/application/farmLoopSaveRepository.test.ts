@@ -13,6 +13,7 @@ import { gameContentCatalog } from '../../src/data/content/index.js';
 import {
   createUpdatedFarmTile,
   getFarmTile,
+  requireFarmTile,
 } from '../../src/domain/farming/farmTileState.js';
 
 const FIXED_DATE = new Date('2026-08-03T03:00:00.000Z');
@@ -91,10 +92,10 @@ describe('farm loop save repository', () => {
     const storage = new MemorySaveStorage();
     const repository = createRepository(storage);
     const current = createInitialFarmLoopState(gameContentCatalog);
-    const emptyTutorialTile = current.field.tiles[0];
-    if (emptyTutorialTile === undefined) {
-      throw new Error('Initial farm loop must contain the tutorial tile.');
-    }
+    const emptyTutorialTile = requireFarmTile(
+      current.field,
+      TUTORIAL_TILE_ID,
+    );
     const legacyTutorialTile = createUpdatedFarmTile(emptyTutorialTile, {
       soil: 'tilled',
     });

@@ -1,14 +1,17 @@
-import type { GameHudController } from '../../ui/gameHud.js';
 import type { NextDayPresentationPort } from './requestNextDayCoordinator.js';
 
+export type DayHudPort = Readonly<{
+  setDay: (day: number) => void;
+  markDayTransitionComplete: (eventCount: number) => void;
+}>;
+
 export function createHudDayPresentationPort(
-  hud: Pick<GameHudController, 'root' | 'setDay'>,
+  hud: DayHudPort,
 ): NextDayPresentationPort {
   return Object.freeze({
     present: (_previous, next, events) => {
       hud.setDay(next.farm.day);
-      hud.root.dataset.dayTransitionEvents = String(events.length);
-      hud.root.dataset.dayTransitionStatus = 'complete';
+      hud.markDayTransitionComplete(events.length);
     },
   });
 }

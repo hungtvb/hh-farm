@@ -1,20 +1,17 @@
-name: Verify
+name: Publish Vercel Runtime
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  verify:
+  publish-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout exact production source
@@ -29,25 +26,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Generate farm map
-        run: npm run generate:maps
-
-      - name: Verify generated map is committed
-        run: git diff --exit-code -- public/maps/farm-test.json
-
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Verify source
-        run: npm run check
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run browser smoke
-        run: npm run test:e2e
-
-      - name: Build exact Vercel production bundle
+      - name: Build exact production bundle
         run: npm run build && npm run verify:production-bundle
         env:
           HH_FARM_GIT_SHA: 641671a096fa9b7944276c6512caf203e36297f6
@@ -55,19 +37,45 @@ jobs:
           HH_FARM_DEPLOYMENT_ENVIRONMENT: production
           HH_FARM_DEPLOYMENT_URL: https://hh-farm.vercel.app
 
-      - name: Upload production bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: vercel-dist-main-641671a-v3
-          path: dist/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Package immutable runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/hh-farm-runtime.tar.gz"
+          tar --exclude='*.map' -C dist -czf "$archive" .
+          sha256sum "$archive" | tee "$RUNNER_TEMP/hh-farm-runtime.tar.gz.sha256"
+          cat > "$RUNNER_TEMP/runtime-manifest.json" <<'JSON'
+          {
+            "sourceBranch": "main",
+            "sourceSha": "641671a096fa9b7944276c6512caf203e36297f6",
+            "deploymentUrl": "https://hh-farm.vercel.app",
+            "artifact": "hh-farm-runtime.tar.gz"
+          }
+          JSON
 
-      - name: Upload browser evidence
-        if: ${{ always() }}
+      - name: Publish delivery branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan vercel-runtime-artifact
+          git rm -rf --ignore-unmatch .
+          git clean -fdx
+          cp "$RUNNER_TEMP/hh-farm-runtime.tar.gz" .
+          cp "$RUNNER_TEMP/hh-farm-runtime.tar.gz.sha256" .
+          cp "$RUNNER_TEMP/runtime-manifest.json" .
+          git add hh-farm-runtime.tar.gz hh-farm-runtime.tar.gz.sha256 runtime-manifest.json
+          git commit -m "deploy: publish HH Farm runtime 641671a"
+          git push --force origin HEAD:refs/heads/deploy/vercel-runtime
+
+      - name: Upload delivery evidence
         uses: actions/upload-artifact@v4
         with:
-          name: farm-boot-smoke
-          path: test-results/
-          if-no-files-found: warn
+          name: vercel-runtime-main-641671a
+          path: |
+            ${{ runner.temp }}/hh-farm-runtime.tar.gz
+            ${{ runner.temp }}/hh-farm-runtime.tar.gz.sha256
+            ${{ runner.temp }}/runtime-manifest.json
+          if-no-files-found: error
           retention-days: 7

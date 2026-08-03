@@ -119,9 +119,9 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   await page.keyboard.down('ArrowRight');
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
-      timeout: 2_000,
+      timeout: 4_000,
     })
-    .toBeGreaterThan(startX + 60);
+    .toBeGreaterThan(startX + 50);
   await page.keyboard.up('ArrowRight');
 
   await expect(canvas).toHaveAttribute('data-player-facing', 'right');

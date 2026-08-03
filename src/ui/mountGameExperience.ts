@@ -21,24 +21,20 @@ export function mountGameExperience(
   appRoot: HTMLElement,
 ): GameExperienceController {
   let playerItems = createInitialPlayerItemsState(gameContentCatalog);
-  let hud: GameHudController | undefined;
 
-  const refresh = (): void => {
-    hud?.renderPlayerItems(
-      presentPlayerItems(
-        playerItems,
-        gameContentCatalog,
-        resolveVietnameseItemLabel,
-      ),
+  const createView = () =>
+    presentPlayerItems(
+      playerItems,
+      gameContentCatalog,
+      resolveVietnameseItemLabel,
     );
-  };
 
-  hud = mountGameHud(appRoot, undefined, {
+  const hud = mountGameHud(appRoot, undefined, {
     onSelectToolbarSlot: (slotIndex) => {
       const result = selectToolbarSlot(playerItems, slotIndex);
       if (result.ok) {
         playerItems = result.state;
-        refresh();
+        hud.renderPlayerItems(createView());
       }
     },
     onBindInventoryItem: (itemId) => {
@@ -49,11 +45,11 @@ export function mountGameExperience(
       );
       if (result.ok) {
         playerItems = result.state;
-        refresh();
+        hud.renderPlayerItems(createView());
       }
     },
   });
-  refresh();
+  hud.renderPlayerItems(createView());
 
   return Object.freeze({
     hud,

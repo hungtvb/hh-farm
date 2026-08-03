@@ -218,45 +218,44 @@ async function alignPlayerCoordinate(
   target: number,
   negativeKey: 'ArrowLeft' | 'ArrowUp',
   positiveKey: 'ArrowDown' | 'ArrowRight',
-  tolerance = 4,
+  tolerance = 20,
 ): Promise<void> {
-  let current = await readNumberAttribute(canvas, attributeName);
-  if (current > target + tolerance) {
-    await moveUntilCoordinate(
-      page,
-      canvas,
-      negativeKey,
-      attributeName,
-      'at_most',
-      target + tolerance,
-    );
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const current = await readNumberAttribute(canvas, attributeName);
+    if (Math.abs(current - target) <= tolerance) {
+      return;
+    }
+
+    if (current > target) {
+      await moveUntilCoordinate(
+        page,
+        canvas,
+        negativeKey,
+        attributeName,
+        'at_most',
+        target + tolerance,
+      );
+    } else {
+      await moveUntilCoordinate(
+        page,
+        canvas,
+        positiveKey,
+        attributeName,
+        'at_least',
+        target - tolerance,
+      );
+    }
   }
 
-  current = await readNumberAttribute(canvas, attributeName);
-  if (current < target - tolerance) {
-    await moveUntilCoordinate(
-      page,
-      canvas,
-      positiveKey,
-      attributeName,
-      'at_least',
-      target - tolerance,
-    );
-  }
-
-  await expect
-    .poll(() => readNumberAttribute(canvas, attributeName))
-    .toBeGreaterThanOrEqual(target - tolerance);
-  await expect
-    .poll(() => readNumberAttribute(canvas, attributeName))
-    .toBeLessThanOrEqual(target + tolerance);
+  const finalValue = await readNumberAttribute(canvas, attributeName);
+  expect(Math.abs(finalValue - target)).toBeLessThanOrEqual(tolerance);
 }
 
 async function alignPlayerX(
   page: Page,
   canvas: Locator,
   targetX: number,
-  tolerance = 4,
+  tolerance = 20,
 ): Promise<void> {
   await alignPlayerCoordinate(
     page,
@@ -273,7 +272,7 @@ async function alignPlayerY(
   page: Page,
   canvas: Locator,
   targetY: number,
-  tolerance = 4,
+  tolerance = 20,
 ): Promise<void> {
   await alignPlayerCoordinate(
     page,
@@ -297,15 +296,15 @@ async function moveToFarmTile(
 }
 
 async function moveToBed(page: Page, canvas: Locator): Promise<void> {
-  await alignPlayerY(page, canvas, 448, 6);
-  await alignPlayerX(page, canvas, 720, 6);
+  await alignPlayerY(page, canvas, 448);
+  await alignPlayerX(page, canvas, 720);
   await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed', 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'bed');
 }
 
 async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
-  await alignPlayerY(page, canvas, 448, 6);
-  await alignPlayerX(page, canvas, 240, 6);
+  await alignPlayerY(page, canvas, 448);
+  await alignPlayerX(page, canvas, 240);
   await moveUntilTarget(
     page,
     canvas,

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { VISUAL_TEXTURE_KEYS } from '../assets/visualAssets';
 import { createPlayerTextures } from '../player/createPlayerTextures';
 import { createPlayerCollisionWorld } from '../player/collisionWorld';
 import { PlayerController } from '../player/PlayerController';
@@ -31,6 +32,7 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.collisionCount = String(metadata.collisions.length);
     this.game.canvas.dataset.sceneInstance = String(farmSceneCreateCount);
     this.game.canvas.dataset.sceneShutdownCount = String(farmSceneShutdownCount);
+    this.game.canvas.dataset.mapSummary = mapSummary;
 
     debugGraphics.lineStyle(2, 0x355f36, 0.4);
     for (const collision of metadata.collisions) {
@@ -52,6 +54,41 @@ export class FarmScene extends Phaser.Scene {
         12,
       );
     }
+
+    const visualPrototypeRegion = metadata.farmableRegions[0];
+    if (visualPrototypeRegion === undefined) {
+      throw new Error('Farm map requires one farmable region for visual assets.');
+    }
+
+    const prototypeTextures = [
+      VISUAL_TEXTURE_KEYS.soilUntilled,
+      VISUAL_TEXTURE_KEYS.soilTilled,
+      VISUAL_TEXTURE_KEYS.soilWatered,
+    ] as const;
+    const prototypeY = visualPrototypeRegion.y + 42;
+
+    for (const [index, textureKey] of prototypeTextures.entries()) {
+      this.add
+        .image(
+          visualPrototypeRegion.x + 42 + index * 66,
+          prototypeY,
+          textureKey,
+        )
+        .setDisplaySize(58, 58)
+        .setDepth(8_000);
+    }
+
+    this.add
+      .image(
+        visualPrototypeRegion.x + 42,
+        prototypeY,
+        VISUAL_TEXTURE_KEYS.selectionCursor,
+      )
+      .setDisplaySize(62, 62)
+      .setAlpha(0.95)
+      .setDepth(8_010);
+    this.game.canvas.dataset.visualAssetCount = '4';
+    this.game.canvas.dataset.visualPrototype = 'soil-states';
 
     createPlayerTextures(this);
     this.playerController = new PlayerController(this, {
@@ -75,29 +112,6 @@ export class FarmScene extends Phaser.Scene {
       this.playerController.sprite.y,
     );
     camera.startFollow(this.playerController.sprite, true, 1, 1);
-
-    this.add
-      .text(16, 16, 'HH Farm · Player prototype', {
-        backgroundColor: '#f6f1d8dd',
-        color: '#244a26',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '18px',
-        fontStyle: 'bold',
-        padding: { x: 12, y: 8 },
-      })
-      .setScrollFactor(0)
-      .setDepth(20_000);
-
-    this.add
-      .text(16, 58, mapSummary, {
-        backgroundColor: '#f6f1d8cc',
-        color: '#355f36',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '13px',
-        padding: { x: 10, y: 6 },
-      })
-      .setScrollFactor(0)
-      .setDepth(20_000);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
   }

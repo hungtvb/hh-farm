@@ -97,41 +97,48 @@ test.describe('@production-loop autosaved farm tutorial', () => {
     expect(runtimeErrors).toEqual([]);
   });
 
-  test('skips tutorial on touch without changing starter state and restores it', async ({
-    page,
-  }) => {
-    const runtimeErrors = collectRuntimeErrors(page);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/');
-
-    const hud = page.locator('.game-hud[data-ready="true"]');
-    const loop = page.locator('.hh-farm-loop[data-ready="true"]');
-    const stats = page.locator('.hh-farm-loop__stats');
-
-    await expect(loop).toBeVisible({ timeout: 10_000 });
-    await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
-
-    await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
-    await expect(loop).toHaveAttribute('data-tutorial-step', 'till');
-    await expect(loop).toHaveAttribute('data-soil', 'untilled');
-    await expect(loop).toHaveAttribute('data-day', '1');
-    await expect(hud).toHaveAttribute('data-coins', '250');
-    await expect(stats).toContainText('Hạt: 5');
-    await expect(stats).toContainText('Củ cải: 0');
-
-    await page.screenshot({
-      path: 'test-results/hh-farm-loop-skip-mobile.png',
-      fullPage: true,
+  test.describe('touch skip flow', () => {
+    test.use({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
     });
 
-    await page.reload();
-    await expect(loop).toBeVisible({ timeout: 10_000 });
-    await expect(loop).toHaveAttribute('data-load-status', 'loaded');
-    await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
-    await expect(loop).toHaveAttribute('data-soil', 'untilled');
-    await expect(loop).toHaveAttribute('data-day', '1');
-    await expect(hud).toHaveAttribute('data-coins', '250');
+    test('skips without changing starter state and restores it', async ({
+      page,
+    }) => {
+      const runtimeErrors = collectRuntimeErrors(page);
+      await page.goto('/');
 
-    expect(runtimeErrors).toEqual([]);
+      const hud = page.locator('.game-hud[data-ready="true"]');
+      const loop = page.locator('.hh-farm-loop[data-ready="true"]');
+      const stats = page.locator('.hh-farm-loop__stats');
+
+      await expect(loop).toBeVisible({ timeout: 10_000 });
+      await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
+
+      await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
+      await expect(loop).toHaveAttribute('data-tutorial-step', 'till');
+      await expect(loop).toHaveAttribute('data-soil', 'untilled');
+      await expect(loop).toHaveAttribute('data-day', '1');
+      await expect(hud).toHaveAttribute('data-coins', '250');
+      await expect(stats).toContainText('Hạt: 5');
+      await expect(stats).toContainText('Củ cải: 0');
+
+      await page.screenshot({
+        path: 'test-results/hh-farm-loop-skip-mobile.png',
+        fullPage: true,
+      });
+
+      await page.reload();
+      await expect(loop).toBeVisible({ timeout: 10_000 });
+      await expect(loop).toHaveAttribute('data-load-status', 'loaded');
+      await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
+      await expect(loop).toHaveAttribute('data-soil', 'untilled');
+      await expect(loop).toHaveAttribute('data-day', '1');
+      await expect(hud).toHaveAttribute('data-coins', '250');
+
+      expect(runtimeErrors).toEqual([]);
+    });
   });
 });

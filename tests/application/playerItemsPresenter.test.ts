@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialPlayerItemsState } from '../../src/application/inventory/createInitialPlayerItemsState.js';
 import { presentPlayerItems } from '../../src/application/inventory/playerItemsPresenter.js';
 import { gameContentCatalog } from '../../src/data/content/index.js';
-import {
-  countInventoryItem,
-} from '../../src/domain/inventory/inventoryState.js';
+import { countInventoryItem } from '../../src/domain/inventory/inventoryState.js';
 import {
   bindToolbarItem,
   removePlayerItem,
@@ -61,6 +59,26 @@ describe('presentPlayerItems', () => {
       itemId: 'tool.hoe',
       quantity: 1,
     });
+  });
+
+  it('applies presentation-only item labels without changing catalog IDs', () => {
+    const state = createInitialPlayerItemsState(gameContentCatalog);
+    const view = presentPlayerItems(
+      state,
+      gameContentCatalog,
+      (itemId, sourceName) =>
+        itemId === 'tool.hoe' ? 'Cuốc' : sourceName,
+    );
+
+    expect(view.inventorySlots[0]?.item).toMatchObject({
+      itemId: 'tool.hoe',
+      displayName: 'Cuốc',
+    });
+    expect(view.toolbarSlots[0]?.item).toMatchObject({
+      itemId: 'tool.hoe',
+      displayName: 'Cuốc',
+    });
+    expect(gameContentCatalog.requireItem('tool.hoe').displayName).toBe('Hoe');
   });
 
   it('uses total quantity for toolbar bindings across inventory stacks', () => {

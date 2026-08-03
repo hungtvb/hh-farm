@@ -1,5 +1,8 @@
 import type { SaveStorage } from '../save/saveStorage.js';
-import type { FarmLoopState } from './farmLoopState.js';
+import {
+  ensureFarmLoopStarterGrid,
+  type FarmLoopState,
+} from './farmLoopState.js';
 import {
   createFarmLoopSaveEnvelope,
   decodeFarmLoopSave,
@@ -81,7 +84,7 @@ export class FarmLoopSaveRepository {
         status: 'loaded',
         source: 'current',
         envelope: current.envelope,
-        state: current.state,
+        state: ensureFarmLoopStarterGrid(current.state),
         migratedFrom: current.migratedFrom,
       };
     }
@@ -96,7 +99,7 @@ export class FarmLoopSaveRepository {
         status: 'recovered',
         source: 'previous',
         envelope: previous.envelope,
-        state: previous.state,
+        state: ensureFarmLoopStarterGrid(previous.state),
         migratedFrom: previous.migratedFrom,
         currentError: current.error,
       };

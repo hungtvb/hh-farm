@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-214 — Build typed content catalogs and validation pipeline`
+`TON-215 — Implement farming commands and authoritative farm tile state`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline and typed gameplay-content foundation. Farming gameplay and production art are tracked separately in Linear.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content and pure farming command foundation. Visible farming controls and production art are tracked separately in Linear.
 
 ## Requirements
 
@@ -32,15 +32,28 @@ npm run preview
 ```text
 src/
 ├── build/           # Immutable build/deployment identity.
-├── domain/          # Pure game rules, save contracts and benchmark statistics.
-├── application/     # Use cases and ports, including save/recovery policy.
+├── domain/          # Pure game and farming state transitions.
+├── application/     # Use cases, ports and renderer/content adapters.
 ├── infrastructure/  # Browser adapters such as IndexedDB.
-├── game/            # Phaser bootstrap, scenes, world loading and render/input adapters.
+├── game/            # Phaser bootstrap, scenes, world loading and input adapters.
 ├── data/            # Typed content catalogs, Tiled contracts and validation.
 └── ui/              # Browser UI overlays and presenters.
 ```
 
-Domain and content validation remain isolated from Phaser and browser storage APIs, allowing game rules, references, content boundaries, benchmark statistics and save migration to be tested without booting a renderer or IndexedDB.
+Domain and content validation remain isolated from Phaser and browser storage APIs, allowing farming rules, references, command failures, benchmark statistics and save migration to be tested without booting a renderer or IndexedDB.
+
+## Farming commands
+
+`FarmTileState` is the authoritative source for soil, water and crop state. The pure command layer provides:
+
+- `tillSoil`;
+- `plantSeed`;
+- `waterTile`;
+- `harvestCrop`.
+
+Commands return immutable success/failure results and typed domain events. Failed commands retain the exact original aggregate state and emit no events. Planting consumes one seed only after all preconditions pass. Harvesting clears a mature crop only after inventory accepts the full predetermined yield; a full inventory leaves the crop untouched.
+
+Content and inventory are supplied through pure ports. Phaser receives projected tile state and events through an application renderer adapter; it does not own farming rules. See [TON-215 farming command contract](docs/farming/TON-215-farming-commands.md).
 
 ## Typed gameplay content
 
@@ -107,7 +120,7 @@ Setup, required GitHub rules and rollback instructions are in [TON-213 Cloudflar
 
 ## Verification
 
-GitHub Actions runs generated-map drift and content-catalog validation before typecheck, lint, unit tests, production build validation and serialized Chromium runtime tests. Production assets are scanned to ensure technical save diagnostics are absent.
+GitHub Actions runs generated-map drift and content-catalog validation before typecheck, lint, unit tests, production build validation and serialized Chromium runtime tests. Farming unit tests explicitly verify atomic state references, deterministic planting yields and inventory-full harvest recovery. Production assets are scanned to ensure technical save diagnostics are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224`.
 

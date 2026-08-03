@@ -1,0 +1,46 @@
+name: ChatGPT Apply TON-238 Patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton238.yml
+      - .chatgpt/ton238.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Decode and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .chatgpt/ton238.patch.gz.b64 > "$RUNNER_TEMP/ton238.patch.gz"
+          echo "d0c0a24a13f11ae0bafd830d98394a106b471b00439b49e71640b67ff2098a33  $RUNNER_TEMP/ton238.patch.gz" | sha256sum --check
+
+      - name: Apply patch to exact main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach cf9b7cffc9f1c51ad917733298a368bffe329dd3
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gzip -dc "$RUNNER_TEMP/ton238.patch.gz" | git am
+          test "$(git rev-parse HEAD^{tree})" = "066150f1cdceb8361e56a522bfe6ed9ac923c383"
+          git diff --check HEAD^
+
+      - name: Publish TON-238 feature branch
+        shell: bash
+        run: git push origin HEAD:refs/heads/feat/ton-238-mobile-world-first

@@ -5,21 +5,29 @@ import {
   type FarmLoopResult,
 } from '../../src/application/farmLoop/farmLoopCoordinator.js';
 import {
+  createFarmLoopState,
   createInitialFarmLoopState,
   replaceFarmLoopEconomy,
+  type FarmLoopState,
 } from '../../src/application/farmLoop/farmLoopState.js';
 import { createFarmingContentPort } from '../../src/application/farming/createFarmingContentPort.js';
 import { createFarmingInventoryPort } from '../../src/application/inventory/createFarmingInventoryPort.js';
 import { gameContentCatalog } from '../../src/data/content/index.js';
 import { sellInventoryItem } from '../../src/domain/economy/economyState.js';
+import {
+  createFarmField,
+  getFarmTile,
+} from '../../src/domain/farming/farmTileState.js';
 import { countInventoryItem } from '../../src/domain/inventory/inventoryState.js';
 
 function createCoordinator(options?: {
-  save?: (state: ReturnType<typeof createInitialFarmLoopState>) => Promise<void>;
+  initial?: FarmLoopState;
+  save?: (state: FarmLoopState) => Promise<void>;
   present?: (result: FarmLoopResult) => void;
 }) {
-  const initial = createInitialFarmLoopState(gameContentCatalog);
-  const saves: ReturnType<typeof createInitialFarmLoopState>[] = [];
+  const initial =
+    options?.initial ?? createInitialFarmLoopState(gameContentCatalog);
+  const saves: FarmLoopState[] = [];
   const presentations: FarmLoopResult[] = [];
   const coordinator = new FarmLoopCoordinator(
     initial,
@@ -69,6 +77,55 @@ async function growAndHarvestTurnip(
 }
 
 describe('FarmLoopCoordinator', () => {
+  it('applies farming actions to an explicit world tile without mutating the tutorial tile', async () => {
+    const starter = createInitialFarmLoopState(gameContentCatalog);
+    const worldTileId = 'world:8,5';
+    const initial = createFarmLoopState({
+      farm: starter.farm,
+      field: createFarmField([
+        { id: 'tutorial-plot', x: 0, y: 0 },
+        { id: worldTileId, x: 8, y: 5 },
+      ]),
+      economy: starter.economy,
+      progression: starter.progression,
+      tutorial: starter.tutorial,
+    });
+    const { coordinator } = createCoordinator({ initial });
+
+    await expectCompleted(coordinator.perform('till', worldTileId));
+    await expectCompleted(coordinator.perform('plant', worldTileId));
+    for (let index = 0; index < 3; index += 1) {
+      await expectCompleted(coordinator.perform('water', worldTileId));
+      await expectCompleted(coordinator.perform('next_day', worldTileId));
+    }
+
+    expect(
+      getFarmTile(coordinator.getState().field, 'tutorial-plot'),
+    ).toMatchObject({
+      soil: 'untilled',
+      watered: false,
+      crop: null,
+    });
+    expect(
+      getFarmTile(coordinator.getState().field, worldTileId),
+    ).toMatchObject({
+      soil: 'tilled',
+      watered: false,
+      crop: { cropId: 'turnip', plantedDay: 1, growthStageIndex: 3 },
+    });
+
+    await expectCompleted(coordinator.perform('harvest', worldTileId));
+    expect(
+      getFarmTile(coordinator.getState().field, worldTileId)?.crop,
+    ).toBeNull();
+    expect(
+      countInventoryItem(
+        coordinator.getState().economy.playerItems.inventory,
+        'produce.turnip',
+      ),
+    ).toBeGreaterThanOrEqual(1);
+  });
+
   it('completes till, plant, repeated day growth, harvest and sell', async () => {
     const { coordinator, saves } = createCoordinator();
 

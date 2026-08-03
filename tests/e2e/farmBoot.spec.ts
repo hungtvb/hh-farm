@@ -211,42 +211,79 @@ async function moveUntilCoordinate(
   }
 }
 
+async function alignPlayerCoordinate(
+  page: Page,
+  canvas: Locator,
+  attributeName: 'data-player-x' | 'data-player-y',
+  target: number,
+  negativeKey: 'ArrowLeft' | 'ArrowUp',
+  positiveKey: 'ArrowDown' | 'ArrowRight',
+  tolerance = 4,
+): Promise<void> {
+  let current = await readNumberAttribute(canvas, attributeName);
+  if (current > target + tolerance) {
+    await moveUntilCoordinate(
+      page,
+      canvas,
+      negativeKey,
+      attributeName,
+      'at_most',
+      target + tolerance,
+    );
+  }
+
+  current = await readNumberAttribute(canvas, attributeName);
+  if (current < target - tolerance) {
+    await moveUntilCoordinate(
+      page,
+      canvas,
+      positiveKey,
+      attributeName,
+      'at_least',
+      target - tolerance,
+    );
+  }
+
+  await expect
+    .poll(() => readNumberAttribute(canvas, attributeName))
+    .toBeGreaterThanOrEqual(target - tolerance);
+  await expect
+    .poll(() => readNumberAttribute(canvas, attributeName))
+    .toBeLessThanOrEqual(target + tolerance);
+}
+
 async function alignPlayerX(
   page: Page,
   canvas: Locator,
   targetX: number,
   tolerance = 4,
 ): Promise<void> {
-  let currentX = await readNumberAttribute(canvas, 'data-player-x');
-  if (currentX > targetX + tolerance) {
-    await moveUntilCoordinate(
-      page,
-      canvas,
-      'ArrowLeft',
-      'data-player-x',
-      'at_most',
-      targetX + tolerance,
-    );
-  }
+  await alignPlayerCoordinate(
+    page,
+    canvas,
+    'data-player-x',
+    targetX,
+    'ArrowLeft',
+    'ArrowRight',
+    tolerance,
+  );
+}
 
-  currentX = await readNumberAttribute(canvas, 'data-player-x');
-  if (currentX < targetX - tolerance) {
-    await moveUntilCoordinate(
-      page,
-      canvas,
-      'ArrowRight',
-      'data-player-x',
-      'at_least',
-      targetX - tolerance,
-    );
-  }
-
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
-    .toBeGreaterThanOrEqual(targetX - tolerance);
-  await expect
-    .poll(() => readNumberAttribute(canvas, 'data-player-x'))
-    .toBeLessThanOrEqual(targetX + tolerance);
+async function alignPlayerY(
+  page: Page,
+  canvas: Locator,
+  targetY: number,
+  tolerance = 4,
+): Promise<void> {
+  await alignPlayerCoordinate(
+    page,
+    canvas,
+    'data-player-y',
+    targetY,
+    'ArrowUp',
+    'ArrowDown',
+    tolerance,
+  );
 }
 
 async function moveToFarmTile(
@@ -260,28 +297,22 @@ async function moveToFarmTile(
 }
 
 async function moveToBed(page: Page, canvas: Locator): Promise<void> {
-  await moveUntilCoordinate(
-    page,
-    canvas,
-    'ArrowDown',
-    'data-player-y',
-    'at_least',
-    440,
-  );
-  await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed');
+  await alignPlayerY(page, canvas, 448, 6);
+  await alignPlayerX(page, canvas, 720, 6);
+  await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed', 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'bed');
 }
 
 async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
-  await moveUntilCoordinate(
+  await alignPlayerY(page, canvas, 448, 6);
+  await alignPlayerX(page, canvas, 240, 6);
+  await moveUntilTarget(
     page,
     canvas,
-    'ArrowDown',
-    'data-player-y',
-    'at_least',
-    440,
+    'ArrowLeft',
+    'world:shipping-bin',
+    2_000,
   );
-  await moveUntilTarget(page, canvas, 'ArrowLeft', 'world:shipping-bin');
   await expect(canvas).toHaveAttribute(
     'data-world-target-kind',
     'shipping_bin',

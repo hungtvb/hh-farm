@@ -99,7 +99,7 @@ test.describe('touch inventory interaction', () => {
     isMobile: true,
   });
 
-  test('binds an item by tap and keeps the modal inside portrait viewport', async ({
+  test('binds an item by tap and keeps a compact portrait sheet', async ({
     page,
   }) => {
     const runtimeErrors = collectRuntimeErrors(page);
@@ -120,6 +120,13 @@ test.describe('touch inventory interaction', () => {
     await inventoryToggle.tap();
     await expect(modal).toBeVisible();
     await expectInsideViewport(modal, 390, 844);
+
+    const modalBox = await modal.boundingBox();
+    expect(modalBox).not.toBeNull();
+    if (modalBox !== null) {
+      expect(modalBox.height).toBeLessThan(680);
+      expect(modalBox.y + modalBox.height).toBeGreaterThan(820);
+    }
 
     const turnipSeeds = page.locator(
       '.hh-inventory-slot[data-item-id="seed.turnip"]',

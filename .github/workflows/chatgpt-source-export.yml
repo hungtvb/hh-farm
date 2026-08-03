@@ -1,4 +1,4 @@
-name: ChatGPT Apply Mobile-First Patch
+name: ChatGPT Apply TON-233 Lint Fix
 
 on:
   pull_request:
@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - .github/workflows/chatgpt-source-export.yml
-      - .chatgpt/ton233.patch.gz
+      - .chatgpt/ton233-fix2.patch.gz
 
 permissions:
   contents: write
 
 jobs:
-  apply-patch:
+  apply-fix:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -27,20 +27,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp .chatgpt/ton233.patch.gz "$RUNNER_TEMP/ton233.patch.gz"
-          echo "14cf044fefd7c466d62229633d936bb0bca200426bb50ec2be5e90244d74dc83  $RUNNER_TEMP/ton233.patch.gz" | sha256sum --check
+          cp .chatgpt/ton233-fix2.patch.gz "$RUNNER_TEMP/ton233-fix2.patch.gz"
+          echo "5c37eb019d9358d38fcc009bca5f25e4c4ad5726938519e8f09d4ec1abe09734  $RUNNER_TEMP/ton233-fix2.patch.gz" | sha256sum --check
 
-      - name: Apply patch to exact main commit
+      - name: Apply fix to exact feature commit
         shell: bash
         run: |
           set -euo pipefail
-          git checkout --detach 9db95dc57e981d40d30295544577ab781c6dc2b6
+          git checkout --detach 5263b4eb41f066aef74a258ee63ff0ecbec490b4
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          gzip -dc "$RUNNER_TEMP/ton233.patch.gz" | git am
-          test "$(git rev-parse HEAD^{tree})" = "56dbad8c0a8feba11775c59651ee0f1754571286"
+          gzip -dc "$RUNNER_TEMP/ton233-fix2.patch.gz" | git am
+          test "$(git rev-parse HEAD^{tree})" = "9e1d60370bdea9634b1a02e4b170e7b308007035"
           git diff --check HEAD^
 
-      - name: Publish TON-233 feature branch
+      - name: Publish lint fix
         shell: bash
         run: git push origin HEAD:refs/heads/feat/ton-233-direct-touch-auto-approach

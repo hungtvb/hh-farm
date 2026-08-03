@@ -10,6 +10,7 @@ import {
   mountGameHud,
   type GameHudController,
 } from './gameHud.js';
+import { resolveVietnameseItemLabel } from './itemLabelsVi.js';
 
 export type GameExperienceController = Readonly<{
   hud: GameHudController;
@@ -24,7 +25,11 @@ export function mountGameExperience(
 
   const refresh = (): void => {
     hud?.renderPlayerItems(
-      presentPlayerItems(playerItems, gameContentCatalog),
+      presentPlayerItems(
+        playerItems,
+        gameContentCatalog,
+        resolveVietnameseItemLabel,
+      ),
     );
   };
 

@@ -105,9 +105,13 @@ function decodeTile(
     return `${context}.coordinate must be an object.`;
   }
 
+  const coordinateX = value.coordinate.x;
+  const coordinateY = value.coordinate.y;
   if (
-    !Number.isInteger(value.coordinate.x) ||
-    !Number.isInteger(value.coordinate.y)
+    typeof coordinateX !== 'number' ||
+    typeof coordinateY !== 'number' ||
+    !Number.isInteger(coordinateX) ||
+    !Number.isInteger(coordinateY)
   ) {
     return `${context}.coordinate values must be integers.`;
   }
@@ -128,10 +132,7 @@ function decodeTile(
 
   return Object.freeze({
     id,
-    coordinate: Object.freeze({
-      x: value.coordinate.x,
-      y: value.coordinate.y,
-    }),
+    coordinate: Object.freeze({ x: coordinateX, y: coordinateY }),
     soil: value.soil,
     watered: value.watered,
     crop,

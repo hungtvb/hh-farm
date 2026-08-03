@@ -43,6 +43,11 @@ import { mountShopUi, type ShopUiController } from './shopUi.js';
 
 const FARM_LOOP_SAVE_DATABASE_NAME = 'hh-farm-loop-save';
 
+type UiReferences = {
+  farmLoop?: FarmLoopUiController;
+  shop?: ShopUiController;
+};
+
 export type GameExperienceController = Readonly<{
   hud: GameHudController;
   getFarmLoopState: () => FarmLoopState;
@@ -108,8 +113,7 @@ export async function mountGameExperience(
     );
   }
 
-  let farmLoopUi: FarmLoopUiController | undefined;
-  let shop: ShopUiController | undefined;
+  const ui: UiReferences = {};
   let refresh = (): void => undefined;
 
   const coordinator = new FarmLoopCoordinator(
@@ -125,7 +129,7 @@ export async function mountGameExperience(
     Object.freeze({
       present: (result: FarmLoopResult) => {
         refresh();
-        farmLoopUi?.presentResult(result);
+        ui.farmLoop?.presentResult(result);
       },
     }),
   );
@@ -181,7 +185,7 @@ export async function mountGameExperience(
     events: Parameters<FarmLoopCoordinator['commitExternal']>[2],
   ): Promise<FarmLoopResult> => coordinator.commitExternal(action, candidate, events);
 
-  shop = mountShopUi(hud.root, {
+  ui.shop = mountShopUi(hud.root, {
     onBeforeOpen: hud.closeInventory,
     onBuyOffer: (offerId) => {
       void (async () => {
@@ -192,7 +196,7 @@ export async function mountGameExperience(
           currentDay: current.farm.day,
         });
         if (!transaction.ok) {
-          shop?.showFeedback(
+          ui.shop?.showFeedback(
             economyFailureCopy(transaction.error.code),
             'error',
           );
@@ -210,12 +214,12 @@ export async function mountGameExperience(
           transaction.events,
         );
         if (commit.status !== 'completed') {
-          shop?.showFeedback(commit.message, 'error');
+          ui.shop?.showFeedback(commit.message, 'error');
           return;
         }
 
         const item = gameContentCatalog.requireItem(event.itemId);
-        shop?.showFeedback(
+        ui.shop?.showFeedback(
           `Đã mua ${resolveVietnameseItemLabel(item.id, item.displayName)} · -${String(event.cost)} xu`,
           'success',
         );
@@ -229,7 +233,7 @@ export async function mountGameExperience(
           quantity: 1,
         });
         if (!transaction.ok) {
-          shop?.showFeedback(
+          ui.shop?.showFeedback(
             economyFailureCopy(transaction.error.code),
             'error',
           );
@@ -247,12 +251,12 @@ export async function mountGameExperience(
           transaction.events,
         );
         if (commit.status !== 'completed') {
-          shop?.showFeedback(commit.message, 'error');
+          ui.shop?.showFeedback(commit.message, 'error');
           return;
         }
 
         const item = gameContentCatalog.requireItem(event.itemId);
-        shop?.showFeedback(
+        ui.shop?.showFeedback(
           `Đã bán ${resolveVietnameseItemLabel(item.id, item.displayName)} · +${String(event.revenue)} xu`,
           'success',
         );
@@ -260,13 +264,13 @@ export async function mountGameExperience(
     },
   });
 
-  farmLoopUi = mountFarmLoopUi(hud.root, {
+  ui.farmLoop = mountFarmLoopUi(hud.root, {
     onAction: async (action: FarmLoopTutorialAction) => {
-      farmLoopUi?.setBusy(true);
+      ui.farmLoop?.setBusy(true);
       try {
         await coordinator.perform(action);
       } finally {
-        farmLoopUi?.setBusy(false);
+        ui.farmLoop?.setBusy(false);
       }
     },
   });
@@ -281,7 +285,7 @@ export async function mountGameExperience(
         resolveVietnameseItemLabel,
       ),
     );
-    shop?.render(
+    ui.shop?.render(
       presentShop(
         state.economy,
         economyCatalog,
@@ -289,11 +293,11 @@ export async function mountGameExperience(
         resolveVietnameseItemLabel,
       ),
     );
-    farmLoopUi?.render(presentFarmLoop(state, farmingContent));
+    ui.farmLoop?.render(presentFarmLoop(state, farmingContent));
   };
 
   refresh();
-  farmLoopUi.presentLoadStatus(loadResult.status, loadMessage);
+  ui.farmLoop.presentLoadStatus(loadResult.status, loadMessage);
 
   return Object.freeze({
     hud,

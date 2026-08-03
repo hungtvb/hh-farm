@@ -45,7 +45,7 @@ describe('economy catalog adapter', () => {
 });
 
 describe('initial economy state', () => {
-  it('uses the shared starting player items and coin fixture', () => {
+  it('starts with tools and turnip seeds while advanced seeds remain locked', () => {
     const state = createInitialEconomyState(gameContentCatalog);
 
     expect(state.wallet.coins).toBe(INITIAL_COIN_BALANCE);
@@ -54,9 +54,12 @@ describe('initial economy state', () => {
       'tool.hoe',
       'tool.watering-can',
       'seed.turnip',
-      'seed.carrot',
-      'seed.strawberry',
+      null,
+      null,
     ]);
+    expect(
+      state.playerItems.inventory.slots.filter((slot) => slot !== null),
+    ).toHaveLength(3);
   });
 });
 
@@ -165,7 +168,7 @@ describe('presentShop', () => {
     const state = createInitialEconomyState(gameContentCatalog);
     const view = presentShop(state, catalog, 3);
 
-    expect(view.inventory).toHaveLength(5);
+    expect(view.inventory).toHaveLength(3);
     expect(
       view.inventory.find((item) => item.itemId === 'seed.turnip'),
     ).toMatchObject({

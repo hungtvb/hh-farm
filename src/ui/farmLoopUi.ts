@@ -1,12 +1,13 @@
 import type {
   FarmLoopAction,
   FarmLoopResult,
+  FarmLoopTutorialAction,
 } from '../application/farmLoop/farmLoopCoordinator.js';
 import type { FarmLoopViewModel } from '../application/farmLoop/farmLoopPresenter.js';
 import { getVisualAssetUrl } from './visualSystem.js';
 
 export type FarmLoopUiActions = Readonly<{
-  onAction: (action: FarmLoopAction) => Promise<void> | void;
+  onAction: (action: FarmLoopTutorialAction) => Promise<void> | void;
 }>;
 
 export type FarmLoopUiController = Readonly<{
@@ -14,10 +15,14 @@ export type FarmLoopUiController = Readonly<{
   render: (view: FarmLoopViewModel) => void;
   presentResult: (result: FarmLoopResult) => void;
   setBusy: (busy: boolean) => void;
+  presentLoadStatus: (
+    status: 'empty' | 'loaded' | 'recovered' | 'unavailable' | 'unrecoverable',
+    message?: string,
+  ) => void;
   destroy: () => void;
 }>;
 
-const TILE_ACTIONS: readonly FarmLoopAction[] = Object.freeze([
+const TILE_ACTIONS: readonly FarmLoopTutorialAction[] = Object.freeze([
   'till',
   'plant',
   'water',
@@ -52,8 +57,14 @@ function successCopy(action: FarmLoopAction): string {
   if (action === 'sell') {
     return 'Đã bán một củ cải và nhận xu.';
   }
+  if (action === 'skip_tutorial') {
+    return 'Hướng dẫn đã được bỏ qua; nông trại không bị thay đổi.';
+  }
+  if (action === 'shop_buy' || action === 'shop_sell') {
+    return 'Giao dịch cửa hàng đã được autosave.';
+  }
 
-  return 'Hướng dẫn đã được bỏ qua; nông trại không bị thay đổi.';
+  return 'Túi đồ và thanh công cụ đã được autosave.';
 }
 
 function actionEffect(action: FarmLoopAction): string {
@@ -66,6 +77,9 @@ function actionEffect(action: FarmLoopAction): string {
   if (action === 'next_day') {
     return 'day-flash';
   }
+  if (action === 'shop_buy' || action === 'shop_sell' || action === 'sell') {
+    return 'coin-burst';
+  }
   return 'soil-puff';
 }
 
@@ -73,7 +87,7 @@ function actionSfxCue(action: FarmLoopAction): string {
   if (action === 'next_day') {
     return 'day-transition-placeholder';
   }
-  if (action === 'sell') {
+  if (action === 'sell' || action === 'shop_buy' || action === 'shop_sell') {
     return 'coin-placeholder';
   }
   return `${action}-placeholder`;
@@ -128,9 +142,9 @@ export function mountFarmLoopUi(
   feedback.setAttribute('role', 'status');
   feedback.setAttribute('aria-live', 'polite');
   feedback.textContent = 'Chọn hành động được đánh dấu để bắt đầu.';
-  const buttons = new Map<FarmLoopAction, HTMLButtonElement>();
+  const buttons = new Map<FarmLoopTutorialAction, HTMLButtonElement>();
 
-  const perform = async (action: FarmLoopAction): Promise<void> => {
+  const perform = async (action: FarmLoopTutorialAction): Promise<void> => {
     await actions.onAction(action);
   };
 
@@ -243,11 +257,29 @@ export function mountFarmLoopUi(
     }, 650);
   };
 
+  const presentLoadStatus = (
+    status: 'empty' | 'loaded' | 'recovered' | 'unavailable' | 'unrecoverable',
+    message?: string,
+  ): void => {
+    root.dataset.loadStatus = status;
+    if (status === 'loaded') {
+      feedback.dataset.kind = 'success';
+      feedback.textContent = 'Đã tiếp tục từ autosave gần nhất.';
+    } else if (status === 'recovered') {
+      feedback.dataset.kind = 'success';
+      feedback.textContent = 'Đã phục hồi từ bản lưu an toàn trước đó.';
+    } else if (status === 'unavailable' || status === 'unrecoverable') {
+      feedback.dataset.kind = 'error';
+      feedback.textContent = message ?? 'Không thể đọc bản lưu; đang dùng nông trại mới.';
+    }
+  };
+
   return Object.freeze({
     root,
     render,
     presentResult,
     setBusy,
+    presentLoadStatus,
     destroy: () => {
       if (particleTimer !== undefined) {
         window.clearTimeout(particleTimer);

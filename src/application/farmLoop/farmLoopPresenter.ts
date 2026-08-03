@@ -2,14 +2,14 @@ import type { FarmingContentPort } from '../../domain/farming/farmingPorts.js';
 import { getFarmTile } from '../../domain/farming/farmTileState.js';
 import { countInventoryItem } from '../../domain/inventory/inventoryState.js';
 import type { TutorialStep } from '../../domain/tutorial/tutorialState.js';
-import type { FarmLoopAction } from './farmLoopCoordinator.js';
+import type { FarmLoopTutorialAction } from './farmLoopCoordinator.js';
 import {
   TUTORIAL_TILE_ID,
   type FarmLoopState,
 } from './farmLoopState.js';
 
 export type FarmLoopActionViewModel = Readonly<{
-  action: FarmLoopAction;
+  action: FarmLoopTutorialAction;
   label: string;
   recommended: boolean;
 }>;
@@ -34,7 +34,9 @@ export type FarmLoopViewModel = Readonly<{
   actions: readonly FarmLoopActionViewModel[];
 }>;
 
-const ACTION_LABELS: Readonly<Record<FarmLoopAction, string>> = Object.freeze({
+const ACTION_LABELS: Readonly<
+  Record<FarmLoopTutorialAction, string>
+> = Object.freeze({
   till: 'Xới đất',
   plant: 'Gieo củ cải',
   water: 'Tưới cây',
@@ -77,7 +79,9 @@ const STEP_COPY: Readonly<
   }),
 });
 
-function recommendedAction(step: TutorialStep): FarmLoopAction | null {
+function recommendedAction(
+  step: TutorialStep,
+): FarmLoopTutorialAction | null {
   if (step === 'completed') {
     return null;
   }
@@ -120,7 +124,7 @@ export function presentFarmLoop(
     : recommendedAction(state.tutorial.step);
 
   const actions = Object.freeze(
-    (Object.keys(ACTION_LABELS) as FarmLoopAction[]).map((action) =>
+    (Object.keys(ACTION_LABELS) as FarmLoopTutorialAction[]).map((action) =>
       Object.freeze({
         action,
         label: ACTION_LABELS[action],

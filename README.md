@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-217 — Implement inventory, toolbar and item transactions`
+`TON-218 — Implement wallet, shop and buy/sell economy`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands, guarded day/crop growth, a generated visual system and a playable inventory/toolbar shell.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands, guarded day/crop growth, generated visual assets, inventory/toolbar interactions and a playable buy/sell shop.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ npm run preview
 
 `npm run generate:maps` rebuilds the deterministic map fixture. `npm run generate:assets` rebuilds the generated SVG visual pack and manifest. `npm run validate:assets` checks identity, naming, anchors, SVG structure and byte budget. `npm run validate:content` validates the crop/item/tool/shop catalog.
 
-`npm run check` runs generated-output drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostic exclusion. `npm run test:e2e` rebuilds in the dedicated E2E mode and verifies player lifecycle, crop benchmark, IndexedDB recovery, guarded day transition, inventory interactions, build identity and responsive UI in Chromium.
+`npm run check` runs generated-output drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostic exclusion. `npm run test:e2e` rebuilds in the dedicated E2E mode and verifies player lifecycle, crop benchmark, IndexedDB recovery, guarded day transition, inventory/shop interactions, build identity and responsive UI in Chromium.
 
 ## Architecture
 
@@ -42,15 +42,27 @@ public/assets/
 
 src/
 ├── build/           # Immutable build/deployment identity.
-├── domain/          # Pure farming, inventory, day, save and benchmark rules.
+├── domain/          # Pure farming, inventory, economy, day and save rules.
 ├── application/     # Coordinators, presenters, use cases and abstract ports.
 ├── infrastructure/  # Browser adapters such as IndexedDB.
 ├── game/            # Phaser bootstrap, scenes, world and input adapters.
 ├── data/            # Typed content catalogs and map validation.
-└── ui/              # Browser HUD, inventory modal and responsive layout.
+└── ui/              # HUD, inventory/shop dialogs and responsive layout.
 ```
 
 Domain and content validation remain isolated from Phaser and browser storage APIs. Application coordinators depend on abstract ports; UI and IndexedDB provide concrete adapters at the edge.
+
+## Wallet and shop economy
+
+`EconomyState` commits one immutable wallet together with the authoritative `PlayerItemsState`. Wallet coins are non-negative safe integers, and every buy/sell operation either commits the complete wallet/inventory candidate or preserves the original aggregate.
+
+The shop uses the validated content catalog for item identity, stack limits, buy prices, sell prices, offer quantities and unlock days. UI code does not duplicate economic values.
+
+Buy transactions validate the complete cost, unlock day and inventory capacity before debit. Sell transactions validate ownership, sellability and coin-overflow safety before removing items. Selling the final item reuses toolbar cleanup from TON-217.
+
+The shop presenter calls the same transaction engine to derive disabled states such as `insufficient_funds`, `inventory_full` and `offer_locked`. The production experience starts with 250 coins. Desktop uses a centered market panel; portrait mobile uses a safe-area-aware scrollable sheet. Live feedback updates coins, inventory and toolbar quantities together.
+
+See [TON-218 wallet and shop economy contract](docs/economy/TON-218-shop-economy.md).
 
 ## Inventory and toolbar
 
@@ -63,7 +75,7 @@ Item transactions are atomic:
 - removals require the complete requested quantity;
 - failed transactions preserve the original aggregate;
 - consuming the final item clears every toolbar binding for that item;
-- farming and future shop operations share the same inventory-full behavior.
+- farming and shop operations share the same inventory-full behavior.
 
 The starting inventory and stack limits come from the validated content catalog. The DOM HUD receives immutable view models, emits select/bind intents and never edits quantities directly. Vietnamese labels are applied at the presentation boundary without changing catalog identity.
 
@@ -71,10 +83,10 @@ Controls:
 
 - `1–8`: select a toolbar slot;
 - `I`: open or close the inventory;
-- `Escape`: close the inventory;
-- pointer/touch: select a slot and bind an inventory item.
+- `Escape`: close the active dialog;
+- pointer/touch: select a slot, bind an inventory item and buy/sell shop items.
 
-Desktop uses a centered inventory panel. Portrait mobile uses a compact safe-area-aware bottom sheet. See [TON-217 inventory and toolbar contract](docs/inventory/TON-217-inventory-toolbar.md).
+Desktop uses centered dialogs. Portrait mobile uses safe-area-aware sheets. See [TON-217 inventory and toolbar contract](docs/inventory/TON-217-inventory-toolbar.md).
 
 ## Day transition and crop growth
 
@@ -163,7 +175,7 @@ After `Verify` succeeds, `Deploy Pages` can publish same-repository pull request
 
 ## Verification
 
-GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, 95 unit tests across 18 files, production build validation and 11 serialized Chromium runtime tests. Browser evidence covers keyboard/pointer inventory binding, mobile touch interaction, compact portrait composition and all existing player, benchmark, day-transition, save-recovery and visual-shell regressions. Production bundles are scanned to ensure save/day-transition diagnostics are absent.
+GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, 114 unit tests across 21 files, production build validation and 13 serialized Chromium runtime tests. Browser evidence covers atomic desktop buy/sell, live coin and stack updates, shop keyboard isolation, mobile touch purchase, inventory binding, movement, benchmark, day transition, save recovery and responsive visual composition. Production bundles are scanned to ensure technical save/day-transition diagnostics are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production loading budgets are tracked by `TON-224`.
 

@@ -1,0 +1,34 @@
+name: ChatGPT NPM Package Export
+
+on:
+  pull_request:
+    branches:
+      - feat/ton-220-vertical-slice-art-pack
+    paths:
+      - .github/workflows/chatgpt-npm-package-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download exact npm package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          npm pack yocto-queue@0.1.0 --ignore-scripts
+          test -s yocto-queue-0.1.0.tgz
+          sha256sum yocto-queue-0.1.0.tgz > yocto-queue-0.1.0.tgz.sha256
+      - name: Upload exact npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: yocto-queue-0.1.0
+          path: |
+            ${{ runner.temp }}/yocto-queue-0.1.0.tgz
+            ${{ runner.temp }}/yocto-queue-0.1.0.tgz.sha256
+          if-no-files-found: error
+          retention-days: 1

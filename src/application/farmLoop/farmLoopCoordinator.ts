@@ -149,6 +149,12 @@ function applyTutorialEvents(
   });
 }
 
+function isTutorialObservedEvent(
+  event: FarmLoopEvent,
+): event is TutorialObservedEvent {
+  return event.type !== 'tutorial-skipped';
+}
+
 function withFieldAndPlayerItems(
   state: FarmLoopState,
   field: FarmFieldState,
@@ -202,14 +208,20 @@ export class FarmLoopCoordinator {
     candidate: FarmLoopState,
     events: readonly FarmLoopEvent[] = Object.freeze([]),
   ): Promise<FarmLoopResult> {
-    return this.execute(action, () =>
-      Object.freeze({
+    return this.execute(action, () => {
+      const observedEvents = events.filter(isTutorialObservedEvent);
+      const state =
+        observedEvents.length === 0
+          ? candidate
+          : applyTutorialEvents(candidate, observedEvents);
+
+      return Object.freeze({
         status: 'completed' as const,
         action,
-        state: candidate,
+        state,
         events: Object.freeze([...events]),
-      }),
-    );
+      });
+    });
   }
 
   private async execute(

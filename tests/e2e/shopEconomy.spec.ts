@@ -56,6 +56,13 @@ test('buys and sells catalog items atomically from the desktop shop', async ({
   await expect(shop).toHaveAttribute('data-offer-count', '3');
   await expect(shop).toHaveAttribute('data-sell-item-count', '5');
 
+  await expect(hud).toHaveAttribute('data-selected-slot', '1');
+  await page.keyboard.press('6');
+  await page.keyboard.press('i');
+  await expect(hud).toHaveAttribute('data-selected-slot', '1');
+  await expect(hud).toHaveAttribute('data-inventory-open', 'false');
+  await expect(shop).toBeVisible();
+
   const strawberryOffer = page.locator(
     '.hh-shop-card[data-offer-id="shop.seed.strawberry"]',
   );

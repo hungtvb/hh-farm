@@ -229,8 +229,7 @@ export function addInventoryItem(
   for (const [slotIndex, slot] of state.slots.entries()) {
     if (
       remaining === 0 ||
-      slot === null ||
-      slot.itemId !== validated.itemId ||
+      slot?.itemId !== validated.itemId ||
       slot.quantity >= validatedStackLimit
     ) {
       continue;
@@ -291,11 +290,7 @@ export function removeInventoryItem(
   const nextSlots = [...state.slots];
 
   for (const [slotIndex, slot] of state.slots.entries()) {
-    if (
-      remaining === 0 ||
-      slot === null ||
-      slot.itemId !== validated.itemId
-    ) {
+    if (remaining === 0 || slot?.itemId !== validated.itemId) {
       continue;
     }
 

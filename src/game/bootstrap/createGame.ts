@@ -3,11 +3,18 @@ import { BootScene } from '../scenes/BootScene';
 import { CropBenchmarkScene } from '../scenes/CropBenchmarkScene';
 import { FarmScene } from '../scenes/FarmScene';
 import { PreloadScene } from '../scenes/PreloadScene';
+import {
+  FARM_GAME_RUNTIME_REGISTRY_KEY,
+  type FarmGameRuntime,
+} from '../runtime/farmGameRuntime';
 
 const GAME_WIDTH = 640;
 const GAME_HEIGHT = 360;
 
-export function createGame(parent: string | HTMLElement): Phaser.Game {
+export function createGame(
+  parent: string | HTMLElement,
+  farmRuntime: FarmGameRuntime,
+): Phaser.Game {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -34,6 +41,11 @@ export function createGame(parent: string | HTMLElement): Phaser.Game {
     },
     audio: {
       disableWebAudio: false,
+    },
+    callbacks: {
+      preBoot: (game) => {
+        game.registry.set(FARM_GAME_RUNTIME_REGISTRY_KEY, farmRuntime);
+      },
     },
   });
 }

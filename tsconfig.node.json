@@ -31,6 +31,7 @@
   ],
   "exclude": [
     "scripts/generate-visual-assets.mjs",
+    "scripts/validate-art-pack-contract.mjs",
     "scripts/validate-visual-assets.mjs"
   ]
 }

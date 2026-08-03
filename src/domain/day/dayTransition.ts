@@ -125,7 +125,7 @@ function validateCrop(
   }
 
   const stages = content.growthStages;
-  if (stages === undefined || stages.length !== content.growthStageCount) {
+  if (stages?.length !== content.growthStageCount) {
     return failure(
       state,
       'invalid_growth_stage',

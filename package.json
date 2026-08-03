@@ -10,6 +10,7 @@
   "scripts": {
     "generate:maps": "node scripts/generate-farm-map.mjs",
     "generate:assets": "node scripts/generate-visual-assets.mjs",
+    "validate:art-pack": "node scripts/validate-art-pack-contract.mjs",
     "validate:assets": "node scripts/validate-visual-assets.mjs",
     "validate:content": "tsc -p tsconfig.content-validation.json --pretty false && node node_modules/.tmp/content-validation/scripts/validate-content.js",
     "dev": "vite",
@@ -21,7 +22,7 @@
     "test:run": "vitest run",
     "test:e2e": "vite build --mode e2e && playwright test --grep-invert @production-loop && vite build && playwright test --grep @production-loop",
     "verify:production-bundle": "node scripts/verify-production-bundle.mjs",
-    "check": "npm run generate:maps && git diff --exit-code -- public/maps/farm-test.json && npm run generate:assets && git diff --exit-code -- public/assets/generated && npm run validate:assets && npm run validate:content && npm run typecheck && npm run lint && npm run test:run && npm run build && npm run verify:production-bundle"
+    "check": "npm run generate:maps && git diff --exit-code -- public/maps/farm-test.json && npm run generate:assets && git diff --exit-code -- public/assets/generated && npm run validate:art-pack && npm run validate:assets && npm run validate:content && npm run typecheck && npm run lint && npm run test:run && npm run build && npm run verify:production-bundle"
   },
   "dependencies": {
     "phaser": "4.2.1"

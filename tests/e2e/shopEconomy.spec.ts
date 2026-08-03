@@ -54,7 +54,7 @@ test('buys and sells catalog items atomically from the desktop shop', async ({
   await expect(shop).toBeVisible();
   await expect(hud).toHaveAttribute('data-shop-open', 'true');
   await expect(shop).toHaveAttribute('data-offer-count', '3');
-  await expect(shop).toHaveAttribute('data-sell-item-count', '5');
+  await expect(shop).toHaveAttribute('data-sell-item-count', '3');
 
   await expect(hud).toHaveAttribute('data-selected-slot', '1');
   await page.keyboard.press('6');
@@ -69,9 +69,9 @@ test('buys and sells catalog items atomically from the desktop shop', async ({
   await expect(strawberryOffer).toBeDisabled();
   await expect(strawberryOffer).toHaveAttribute(
     'data-disabled-reason',
-    'offer_locked',
+    'progression_locked',
   );
-  await expect(strawberryOffer).toContainText('Chưa mở khóa');
+  await expect(strawberryOffer).toContainText('Cần cấp 3');
 
   const turnipOffer = page.locator(
     '.hh-shop-card[data-offer-id="shop.seed.turnip"]',
@@ -91,7 +91,7 @@ test('buys and sells catalog items atomically from the desktop shop', async ({
   await expect(turnipSale).toContainText('Đang có 6');
   await expect(turnipToolbar.locator('.hh-item-quantity')).toHaveText('6');
   await expect(page.locator('.hh-shop-feedback')).toHaveText(
-    'Đã mua Củ cải · -20 xu',
+    'Đã mua Hạt củ cải · -20 xu',
   );
   await expect(page.locator('.hh-shop-feedback')).toHaveAttribute(
     'data-kind',
@@ -103,7 +103,7 @@ test('buys and sells catalog items atomically from the desktop shop', async ({
   await expect(turnipSale).toContainText('Đang có 5');
   await expect(turnipToolbar.locator('.hh-item-quantity')).toHaveText('5');
   await expect(page.locator('.hh-shop-feedback')).toHaveText(
-    'Đã bán Củ cải · +5 xu',
+    'Đã bán Hạt củ cải · +5 xu',
   );
 
   await page.screenshot({
@@ -126,7 +126,7 @@ test.describe('touch shop interaction', () => {
     isMobile: true,
   });
 
-  test('buys by touch and keeps the shop inside the portrait viewport', async ({
+  test('enforces progression and buys by touch inside the portrait viewport', async ({
     page,
   }) => {
     const runtimeErrors = collectRuntimeErrors(page);
@@ -147,14 +147,23 @@ test.describe('touch shop interaction', () => {
     const carrotOffer = page.locator(
       '.hh-shop-card[data-offer-id="shop.seed.carrot"]',
     );
-    await carrotOffer.tap();
+    await expect(carrotOffer).toBeDisabled();
+    await expect(carrotOffer).toHaveAttribute(
+      'data-disabled-reason',
+      'progression_locked',
+    );
 
-    await expect(hud).toHaveAttribute('data-coins', '215');
+    const turnipOffer = page.locator(
+      '.hh-shop-card[data-offer-id="shop.seed.turnip"]',
+    );
+    await turnipOffer.tap();
+
+    await expect(hud).toHaveAttribute('data-coins', '230');
     await expect(
-      page.locator('.hh-shop-card[data-sell-item-id="seed.carrot"]'),
-    ).toContainText('Đang có 4');
+      page.locator('.hh-shop-card[data-sell-item-id="seed.turnip"]'),
+    ).toContainText('Đang có 6');
     await expect(page.locator('.hh-shop-feedback')).toHaveText(
-      'Đã mua Cà rốt · -35 xu',
+      'Đã mua Hạt củ cải · -20 xu',
     );
 
     await page.screenshot({

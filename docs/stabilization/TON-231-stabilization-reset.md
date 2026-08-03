@@ -110,5 +110,6 @@ Tracking issue: https://github.com/hungtvb/hh-farm/issues/27
 - The desktop collision regression releases active keyboard input before asserting zero velocity; collision remains verified by the west-bound position and stable camera/player state.
 - Portrait settings control is positioned below the tutorial guidance strip so it cannot intercept the 44 px Skip target; browser coverage asserts the two controls do not overlap.
 - Production mobile settings coverage tills through the Phaser world instead of invoking the intentionally hidden legacy DOM action grid.
+- World-first persistence assertions track the exact tilled-tile count and action tile ID instead of reading the legacy tutorial tile projection; the desktop west-bound collision wait uses a CI-safe bound while retaining the same collision threshold.
 
 This is a layout stabilization slice, not final art polish. Inventory, shop and settings remain modal sheets, and real iPhone Safari safe-area/browser-chrome validation is still required.

@@ -114,9 +114,14 @@ test.describe('@production-loop persistent settings and localization', () => {
       'data-world-tap-target-id',
       'starter-plot:-1:0',
     );
-    await expect(loop).toHaveAttribute('data-soil', 'tilled', {
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'till', {
       timeout: 10_000,
     });
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-action-tile-id',
+      'starter-plot:-1:0',
+    );
+    await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '1');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
 
     await settingsToggle.tap();
@@ -150,7 +155,7 @@ test.describe('@production-loop persistent settings and localization', () => {
       timeout: 10_000,
     });
     await expect(loop).toHaveAttribute('data-load-status', 'loaded');
-    await expect(loop).toHaveAttribute('data-soil', 'tilled');
+    await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '1');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
     await expect(html).toHaveAttribute('lang', 'en');
     await expect(html).toHaveAttribute('data-language', 'en');
@@ -187,7 +192,7 @@ test.describe('@production-loop persistent settings and localization', () => {
       timeout: 10_000,
     });
     await expect(loop).toHaveAttribute('data-load-status', 'empty');
-    await expect(loop).toHaveAttribute('data-soil', 'untilled');
+    await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '0');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'till');
     await expect(html).toHaveAttribute('lang', 'en');
     await expect(html).toHaveAttribute('data-reduced-motion', 'true');

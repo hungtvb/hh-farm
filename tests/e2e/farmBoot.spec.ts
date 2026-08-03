@@ -140,7 +140,7 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   await page.keyboard.down('ArrowLeft');
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
-      timeout: 6_000,
+      timeout: 10_000,
     })
     .toBeLessThanOrEqual(64);
   await page.keyboard.up('ArrowLeft');

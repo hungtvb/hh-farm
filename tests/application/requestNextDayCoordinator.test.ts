@@ -105,11 +105,10 @@ describe('RequestNextDayCoordinator', () => {
       current = state;
     });
     const savePort: NextDayCriticalSavePort = Object.freeze({
-      flush: async () => {
-        if (shouldFail) {
-          throw new Error('IndexedDB quota exceeded.');
-        }
-      },
+      flush: () =>
+        shouldFail
+          ? Promise.reject(new Error('IndexedDB quota exceeded.'))
+          : Promise.resolve(),
     });
     const coordinator = new RequestNextDayCoordinator(
       contentPort,

@@ -174,7 +174,27 @@ test.describe('@production-loop autosaved farm tutorial', () => {
         );
       }
 
-      await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
+      const skipButton = page.locator(
+        '.hh-farm-loop__skip[data-action="skip_tutorial"]',
+      );
+      const settingsToggle = page.locator('.hh-settings-toggle');
+      const [skipBox, settingsBox] = await Promise.all([
+        skipButton.boundingBox(),
+        settingsToggle.boundingBox(),
+      ]);
+      expect(skipBox).not.toBeNull();
+      expect(settingsBox).not.toBeNull();
+      if (skipBox !== null && settingsBox !== null) {
+        const horizontallySeparated =
+          skipBox.x + skipBox.width <= settingsBox.x ||
+          settingsBox.x + settingsBox.width <= skipBox.x;
+        const verticallySeparated =
+          skipBox.y + skipBox.height <= settingsBox.y ||
+          settingsBox.y + settingsBox.height <= skipBox.y;
+        expect(horizontallySeparated || verticallySeparated).toBe(true);
+      }
+
+      await skipButton.tap();
 
       await expect(loop).toHaveAttribute('data-tutorial-skipped', 'true');
       await expect(loop).toHaveAttribute('data-tutorial-step', 'till');

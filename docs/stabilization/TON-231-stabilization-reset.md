@@ -108,5 +108,7 @@ Tracking issue: https://github.com/hungtvb/hh-farm/issues/27
 - Tutorial hints now instruct the player to tap the plot, bed or shipping bin rather than manually steering into an exact facing lane.
 - Mobile E2E asserts the compact layout, enlarged canvas and direct-manipulation contract while preserving the full touch-only farm loop. Route completion is verified through the authoritative interaction ID/kind/coordinates, completed intent state and valid standing distance rather than one stale cardinal approach coordinate.
 - The desktop collision regression releases active keyboard input before asserting zero velocity; collision remains verified by the west-bound position and stable camera/player state.
+- Portrait settings control is positioned below the tutorial guidance strip so it cannot intercept the 44 px Skip target; browser coverage asserts the two controls do not overlap.
+- Production mobile settings coverage tills through the Phaser world instead of invoking the intentionally hidden legacy DOM action grid.
 
 This is a layout stabilization slice, not final art polish. Inventory, shop and settings remain modal sheets, and real iPhone Safari safe-area/browser-chrome validation is still required.

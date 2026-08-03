@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 function collectRuntimeErrors(page: Page): string[] {
   const runtimeErrors: string[] = [];
@@ -13,6 +13,47 @@ function collectRuntimeErrors(page: Page): string[] {
   });
 
   return runtimeErrors;
+}
+
+async function readNumberAttribute(
+  locator: Locator,
+  attributeName: string,
+): Promise<number> {
+  const rawValue = await locator.getAttribute(attributeName);
+  if (rawValue === null) {
+    throw new Error(`Missing numeric attribute "${attributeName}".`);
+  }
+
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) {
+    throw new Error(`Attribute "${attributeName}" is not finite: ${rawValue}`);
+  }
+
+  return value;
+}
+
+async function tapWorldPoint(
+  page: Page,
+  canvas: Locator,
+  worldX: number,
+  worldY: number,
+): Promise<void> {
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) {
+    return;
+  }
+
+  const cameraX = await readNumberAttribute(canvas, 'data-camera-x');
+  const cameraY = await readNumberAttribute(canvas, 'data-camera-y');
+  const cameraZoom = await readNumberAttribute(canvas, 'data-camera-zoom');
+  const screenX = (worldX - cameraX - 320) * cameraZoom + 320;
+  const screenY = (worldY - cameraY - 180) * cameraZoom + 180;
+
+  await page.touchscreen.tap(
+    box.x + (screenX / 640) * box.width,
+    box.y + (screenY / 360) * box.height,
+  );
 }
 
 async function clearFarmSave(page: Page): Promise<void> {
@@ -59,10 +100,23 @@ test.describe('@production-loop persistent settings and localization', () => {
     const settingsToggle = page.locator('.hh-settings-toggle');
     const settings = page.locator('.hh-settings-modal');
 
+    const canvas = page.locator('canvas[data-scene="farm"]');
     await expect(settingsToggle).toBeVisible({ timeout: 10_000 });
+    await expect(canvas).toBeVisible();
+    await expect(canvas).toHaveAttribute(
+      'data-camera-profile',
+      'portrait-world-first',
+    );
     await expect(html).toHaveAttribute('lang', 'vi');
-    await page.locator('.hh-farm-loop__action[data-action="till"]').tap();
-    await expect(loop).toHaveAttribute('data-soil', 'tilled');
+    await tapWorldPoint(page, canvas, 416, 352);
+    await expect(canvas).toHaveAttribute('data-world-tap-result', 'accepted');
+    await expect(canvas).toHaveAttribute(
+      'data-world-tap-target-id',
+      'starter-plot:-1:0',
+    );
+    await expect(loop).toHaveAttribute('data-soil', 'tilled', {
+      timeout: 10_000,
+    });
     await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
 
     await settingsToggle.tap();

@@ -1,10 +1,7 @@
 @media (max-width: 840px) and (orientation: portrait) {
   #game-root {
-    top: 0;
-    right: auto;
-    bottom: 0;
-    left: -10vw;
-    width: 120vw;
+    inset: 0;
+    width: 100%;
     min-width: 0;
     height: 100%;
     min-height: 100%;
@@ -12,18 +9,20 @@
   }
 
   #game-root canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    width: auto !important;
+    height: 100% !important;
+    height: 100dvh !important;
     max-width: none !important;
-    margin: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border-radius: 0;
+    transform: translateX(-50%);
   }
 
   .hh-action-prompt {
     display: none;
-  }
-}
-
-@media (max-width: 480px) and (orientation: portrait) {
-  #game-root {
-    left: -10vw;
-    width: 120vw;
   }
 }

@@ -155,15 +155,23 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       await expect(page.locator('.hh-action-prompt')).toBeHidden();
 
       const loopBox = await loop.boundingBox();
-      const canvasBox = await page
-        .locator('canvas[data-scene="farm"]')
-        .boundingBox();
+      const canvas = page.locator('canvas[data-scene="farm"]');
+      const canvasBox = await canvas.boundingBox();
       expect(loopBox).not.toBeNull();
       expect(canvasBox).not.toBeNull();
+      await expect(canvas).toHaveAttribute(
+        'data-camera-profile',
+        'portrait-world-first',
+      );
+      await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
       if (loopBox !== null && canvasBox !== null) {
-        expect(loopBox.height).toBeLessThan(120);
-        expect(canvasBox.width).toBeGreaterThan(440);
-        expect(loopBox.y + loopBox.height).toBeLessThan(canvasBox.y);
+        expect(loopBox.height).toBeLessThan(90);
+        expect(canvasBox.width).toBeGreaterThan(1_300);
+        expect(canvasBox.height).toBeGreaterThan(800);
+        expect(loopBox.y).toBeGreaterThanOrEqual(canvasBox.y + 60);
+        expect(loopBox.y + loopBox.height).toBeLessThan(
+          canvasBox.y + canvasBox.height * 0.2,
+        );
       }
 
       await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();

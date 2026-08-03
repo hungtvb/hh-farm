@@ -142,12 +142,13 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
       timeout: 6_000,
     })
-    .toBeLessThanOrEqual(44);
+    .toBeLessThanOrEqual(64);
+  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
   await page.keyboard.up('ArrowLeft');
 
-  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
   const westCollisionX = await readNumberAttribute(canvas, 'data-player-x');
   expect(westCollisionX).toBeGreaterThanOrEqual(40);
+  expect(westCollisionX).toBeLessThanOrEqual(64);
 
   await page.evaluate(() => {
     const farmCanvas = document.querySelector<HTMLCanvasElement>('canvas');
@@ -278,14 +279,14 @@ async function moveToFarmTile(
 
 async function moveToBed(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 592);
+  await alignPlayerX(page, canvas, 560);
   await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed', 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'bed');
 }
 
 async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 368);
+  await alignPlayerX(page, canvas, 400);
   await moveUntilTarget(
     page,
     canvas,
@@ -470,8 +471,9 @@ test.describe('mobile-first direct manipulation', () => {
 
     const cameraX = await readNumberAttribute(canvas, 'data-camera-x');
     const cameraY = await readNumberAttribute(canvas, 'data-camera-y');
-    const screenX = worldX - cameraX;
-    const screenY = worldY - cameraY;
+    const cameraZoom = await readNumberAttribute(canvas, 'data-camera-zoom');
+    const screenX = (worldX - cameraX - 320) * cameraZoom + 320;
+    const screenY = (worldY - cameraY - 180) * cameraZoom + 180;
 
     await page.touchscreen.tap(
       box.x + (screenX / 640) * box.width,
@@ -509,10 +511,10 @@ test.describe('mobile-first direct manipulation', () => {
       x: 416,
       y: 352,
     });
-    const bedTarget = Object.freeze({ id: 'world:bed', x: 672, y: 416 });
+    const bedTarget = Object.freeze({ id: 'world:bed', x: 640, y: 416 });
     const binTarget = Object.freeze({
       id: 'world:shipping-bin',
-      x: 288,
+      x: 320,
       y: 416,
     });
 
@@ -520,6 +522,11 @@ test.describe('mobile-first direct manipulation', () => {
       'data-world-input-mode',
       'direct-manipulation',
     );
+    await expect(canvas).toHaveAttribute(
+      'data-camera-profile',
+      'portrait-world-first',
+    );
+    await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
     await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'till');
     await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
 

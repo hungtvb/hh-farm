@@ -120,17 +120,25 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
     'data-interaction-mode',
     'direct-manipulation',
   );
+  await expect(canvas).toHaveAttribute(
+    'data-camera-profile',
+    'portrait-world-first',
+  );
+  await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
   await expectInsideViewport(compactGuide, 390, 844);
 
   expect(canvasBox).not.toBeNull();
   expect(guideBox).not.toBeNull();
 
   if (canvasBox !== null && guideBox !== null) {
-    expect(canvasBox.width).toBeGreaterThan(440);
-    expect(canvasBox.height).toBeGreaterThan(245);
-    expect(canvasBox.x).toBeLessThan(0);
-    expect(guideBox.height).toBeLessThan(120);
-    expect(guideBox.y + guideBox.height).toBeLessThan(canvasBox.y);
+    expect(canvasBox.width).toBeGreaterThan(1_300);
+    expect(canvasBox.height).toBeGreaterThan(800);
+    expect(canvasBox.x).toBeLessThan(-400);
+    expect(guideBox.height).toBeLessThan(90);
+    expect(guideBox.y).toBeGreaterThanOrEqual(canvasBox.y + 60);
+    expect(guideBox.y + guideBox.height).toBeLessThan(
+      canvasBox.y + canvasBox.height * 0.2,
+    );
   }
 
   await page.screenshot({

@@ -43,10 +43,13 @@ const FARM_TILE_HIT_AREA_SIZE = 72;
 const WORLD_OBJECT_HIT_AREA_SIZE = 84;
 const MAX_TAP_DISTANCE = 18;
 const MAX_TAP_DURATION_MS = 650;
+const PORTRAIT_WORLD_QUERY = '(max-width: 840px) and (orientation: portrait)';
+const PORTRAIT_CAMERA_ZOOM = 0.5;
+const PORTRAIT_CAMERA_FOLLOW_OFFSET_Y = 80;
 const BED_TARGET_ID = 'world:bed';
 const SHIPPING_BIN_TARGET_ID = 'world:shipping-bin';
-const BED_POSITION = Object.freeze({ x: 672, y: 448 });
-const SHIPPING_BIN_POSITION = Object.freeze({ x: 288, y: 448 });
+const BED_POSITION = Object.freeze({ x: 640, y: 448 });
+const SHIPPING_BIN_POSITION = Object.freeze({ x: 320, y: 448 });
 
 let farmSceneCreateCount = 0;
 let farmSceneShutdownCount = 0;
@@ -202,12 +205,29 @@ export class FarmScene extends Phaser.Scene {
     this.writePhysicsDebugState();
 
     const camera = this.cameras.main;
+    const portraitWorldFirst = window.matchMedia(PORTRAIT_WORLD_QUERY).matches;
+    const cameraZoom = portraitWorldFirst ? PORTRAIT_CAMERA_ZOOM : 1;
+    const followOffsetY = portraitWorldFirst
+      ? PORTRAIT_CAMERA_FOLLOW_OFFSET_Y
+      : 0;
     camera.roundPixels = true;
+    camera.setZoom(cameraZoom);
     camera.centerOn(
       this.playerController.sprite.x,
       this.playerController.sprite.y,
     );
-    camera.startFollow(this.playerController.sprite, true, 1, 1);
+    camera.startFollow(
+      this.playerController.sprite,
+      true,
+      1,
+      1,
+      0,
+      followOffsetY,
+    );
+    this.game.canvas.dataset.cameraProfile = portraitWorldFirst
+      ? 'portrait-world-first'
+      : 'desktop';
+    this.game.canvas.dataset.cameraZoom = cameraZoom.toFixed(2);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
   }

@@ -374,14 +374,8 @@
     transform: translateY(-50%);
   }
 
-  .hh-farm-loop__feedback {
-    display: none;
-    min-height: 0;
-    padding: 5px 8px;
-    font-size: 0.62rem;
-  }
-
+  .hh-farm-loop__feedback,
   .hh-farm-loop[data-last-result] .hh-farm-loop__feedback {
-    display: block;
+    display: none;
   }
 }

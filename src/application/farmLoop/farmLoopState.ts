@@ -99,12 +99,28 @@ function normalizeTileCoordinate(
 
 export function ensureStarterFarmGrid(field: FarmFieldState): FarmFieldState {
   const existingById = new Map(field.tiles.map((tile) => [tile.id, tile]));
-  const tiles = STARTER_FARM_TILE_DEFINITIONS.map((definition) => {
+  const requiredIds = new Set(
+    STARTER_FARM_TILE_DEFINITIONS.map((definition) => definition.id),
+  );
+  const requiredCoordinates = new Set(
+    STARTER_FARM_TILE_DEFINITIONS.map(
+      (definition) => `${String(definition.x)},${String(definition.y)}`,
+    ),
+  );
+  const requiredTiles = STARTER_FARM_TILE_DEFINITIONS.map((definition) => {
     const existing = existingById.get(definition.id);
     return existing === undefined
       ? createEmptyFarmTile(definition)
       : normalizeTileCoordinate(existing, definition);
   });
+  const additionalTiles = field.tiles.filter(
+    (tile) =>
+      !requiredIds.has(tile.id) &&
+      !requiredCoordinates.has(
+        `${String(tile.coordinate.x)},${String(tile.coordinate.y)}`,
+      ),
+  );
+  const tiles = [...requiredTiles, ...additionalTiles];
 
   const unchanged =
     field.tiles.length === tiles.length &&

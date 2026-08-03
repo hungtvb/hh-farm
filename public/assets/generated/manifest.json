@@ -62,6 +62,16 @@
       "id": "crop.strawberry.stages",
       "file": "crop-strawberry.svg",
       "anchor": "bottom-center"
+    },
+    {
+      "id": "world.bed",
+      "file": "world-bed.svg",
+      "anchor": "bottom-center"
+    },
+    {
+      "id": "world.shipping-bin",
+      "file": "world-shipping-bin.svg",
+      "anchor": "bottom-center"
     }
   ]
 }

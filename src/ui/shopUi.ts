@@ -198,12 +198,12 @@ function createSellButton(
   return button;
 }
 
-function requireElement<T extends Element>(
+function requireHtmlElement(
   parent: ParentNode,
   selector: string,
   message: string,
-): T {
-  const element = parent.querySelector<T>(selector);
+): HTMLElement {
+  const element = parent.querySelector<HTMLElement>(selector);
   if (element === null) {
     throw new Error(message);
   }
@@ -218,12 +218,12 @@ export function mountShopUi(
   hudRoot.querySelector('.hh-shop-modal')?.remove();
   hudRoot.querySelector('.hh-shop-toggle')?.remove();
 
-  const resourceGroup = requireElement<HTMLElement>(
+  const resourceGroup = requireHtmlElement(
     hudRoot,
     '.hh-resources',
     'HUD resources container is required for the shop toggle.',
   );
-  const coinValue = requireElement<HTMLElement>(
+  const coinValue = requireHtmlElement(
     hudRoot,
     '.hh-coin-chip .hh-chip__value',
     'HUD coin value is required for economy presentation.',
@@ -335,11 +335,22 @@ export function mountShopUi(
   closeButton.addEventListener('click', close);
 
   const handleKeyboard = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && !root.hidden) {
+    if (root.hidden) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
       close();
+      return;
+    }
+
+    if (/^[1-8]$/.test(event.key) || event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
     }
   };
-  window.addEventListener('keydown', handleKeyboard);
+  window.addEventListener('keydown', handleKeyboard, true);
   hudRoot.dataset.shopOpen = 'false';
 
   return Object.freeze({
@@ -349,7 +360,7 @@ export function mountShopUi(
     close,
     showFeedback,
     destroy: () => {
-      window.removeEventListener('keydown', handleKeyboard);
+      window.removeEventListener('keydown', handleKeyboard, true);
       toggle.remove();
       root.remove();
     },

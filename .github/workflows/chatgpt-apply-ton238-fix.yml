@@ -1,0 +1,46 @@
+name: ChatGPT Apply TON-238 Viewport Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton238-fix.yml
+      - .chatgpt/ton238-fix.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Decode and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .chatgpt/ton238-fix.patch.gz.b64 > "$RUNNER_TEMP/ton238-fix.patch.gz"
+          echo "a56fb0fb1bc5214b807a1e2022966f714fd3fb865c39c4cfa2f380ba859baf6b  $RUNNER_TEMP/ton238-fix.patch.gz" | sha256sum --check
+
+      - name: Apply patch to exact feature commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach 8d8fa608ccbb278673feafaa1d3c4a97d938290d
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gzip -dc "$RUNNER_TEMP/ton238-fix.patch.gz" | git am
+          test "$(git rev-parse HEAD^{tree})" = "5214de91284eb97a55e1780aa303a49d6002487b"
+          git diff --check HEAD^
+
+      - name: Publish TON-238 fix
+        shell: bash
+        run: git push origin HEAD:refs/heads/feat/ton-238-mobile-world-first

@@ -3,6 +3,10 @@ import { createWallet } from '../economy/walletState.js';
 import type { FarmState } from '../farm/farmState.js';
 import type { FarmFieldState } from '../farming/farmTileState.js';
 import type { PlayerItemsState } from '../inventory/playerItemsState.js';
+import {
+  createProgressionState,
+  type ProgressionState,
+} from '../progression/progressionState.js';
 import type { TutorialState } from '../tutorial/tutorialState.js';
 import type { FarmLoopState } from '../../application/farmLoop/farmLoopState.js';
 import { decodeFarmField } from './farmFieldSave.js';
@@ -10,14 +14,19 @@ import {
   decodePlayerItems,
   encodePlayerItems,
 } from './playerItemsSave.js';
+import {
+  decodeProgression,
+  encodeProgression,
+} from './progressionSave.js';
 import { decodeTutorial, encodeTutorial } from './tutorialSave.js';
 
-export const FARM_LOOP_SAVE_SCHEMA_VERSION = 1;
+export const FARM_LOOP_SAVE_SCHEMA_VERSION = 2;
 
 export type FarmLoopSavePayload = Readonly<{
   farm: FarmState;
   field: FarmFieldState;
   playerItems: PlayerItemsState;
+  progression: ProgressionState;
   tutorial: TutorialState;
 }>;
 
@@ -29,12 +38,18 @@ export type FarmLoopSaveEnvelope = Readonly<{
     farm: FarmState;
     field: FarmFieldState;
     playerItems: ReturnType<typeof encodePlayerItems>;
+    progression: ReturnType<typeof encodeProgression>;
     tutorial: TutorialState;
   }>;
 }>;
 
 export type DecodeFarmLoopSaveResult =
-  | Readonly<{ ok: true; envelope: FarmLoopSaveEnvelope; state: FarmLoopState }>
+  | Readonly<{
+      ok: true;
+      envelope: FarmLoopSaveEnvelope;
+      state: FarmLoopState;
+      migratedFrom: 1 | null;
+    }>
   | Readonly<{ ok: false; error: string }>;
 
 type UnknownRecord = Record<string, unknown>;
@@ -88,7 +103,7 @@ export function decodeFarmLoopSave(value: unknown): DecodeFarmLoopSaveResult {
     return { ok: false, error: 'Farm-loop save envelope must be an object.' };
   }
 
-  if (value.schemaVersion !== FARM_LOOP_SAVE_SCHEMA_VERSION) {
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) {
     return {
       ok: false,
       error: `Unsupported farm-loop save schema version: ${String(value.schemaVersion)}.`,
@@ -133,6 +148,19 @@ export function decodeFarmLoopSave(value: unknown): DecodeFarmLoopSaveResult {
     return tutorial;
   }
 
+  const progression =
+    value.schemaVersion === 1
+      ? {
+          ok: true as const,
+          progression: createProgressionState(
+            tutorial.tutorial.step === 'completed' ? 100 : 0,
+          ),
+        }
+      : decodeProgression(value.payload.progression);
+  if (!progression.ok) {
+    return progression;
+  }
+
   const envelope: FarmLoopSaveEnvelope = Object.freeze({
     schemaVersion: FARM_LOOP_SAVE_SCHEMA_VERSION,
     gameVersion: value.gameVersion.trim(),
@@ -141,6 +169,7 @@ export function decodeFarmLoopSave(value: unknown): DecodeFarmLoopSaveResult {
       farm,
       field: field.field,
       playerItems: encodePlayerItems(playerItems.playerItems),
+      progression: encodeProgression(progression.progression),
       tutorial: encodeTutorial(tutorial.tutorial),
     }),
   });
@@ -148,6 +177,7 @@ export function decodeFarmLoopSave(value: unknown): DecodeFarmLoopSaveResult {
   return {
     ok: true,
     envelope,
+    migratedFrom: value.schemaVersion === 1 ? 1 : null,
     state: Object.freeze({
       farm,
       field: field.field,
@@ -155,6 +185,7 @@ export function decodeFarmLoopSave(value: unknown): DecodeFarmLoopSaveResult {
         createWallet(farm.coins),
         playerItems.playerItems,
       ),
+      progression: progression.progression,
       tutorial: tutorial.tutorial,
     }),
   };
@@ -173,6 +204,7 @@ export function createFarmLoopSaveEnvelope(
       farm: payload.farm,
       field: payload.field,
       playerItems: encodePlayerItems(payload.playerItems),
+      progression: encodeProgression(payload.progression),
       tutorial: encodeTutorial(payload.tutorial),
     },
   });

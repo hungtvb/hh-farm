@@ -74,9 +74,11 @@ describe('FarmLoopCoordinator', () => {
 
     await expectCompleted(coordinator.perform('till'));
     expect(coordinator.getState().tutorial.step).toBe('plant');
+    expect(coordinator.getState().progression.xp).toBe(0);
 
     await expectCompleted(coordinator.perform('plant'));
     expect(coordinator.getState().tutorial.step).toBe('water');
+    expect(coordinator.getState().progression.xp).toBe(10);
     expect(
       countInventoryItem(
         coordinator.getState().economy.playerItems.inventory,
@@ -93,10 +95,12 @@ describe('FarmLoopCoordinator', () => {
     expect(coordinator.getState().farm.day).toBe(4);
     expect(coordinator.getState().tutorial.step).toBe('harvest');
     expect(coordinator.getState().field.tiles[0]?.crop?.growthStageIndex).toBe(3);
+    expect(coordinator.getState().progression.xp).toBe(10);
 
     await expectCompleted(coordinator.perform('harvest'));
     expect(coordinator.getState().tutorial.step).toBe('sell');
     expect(coordinator.getState().field.tiles[0]?.crop).toBeNull();
+    expect(coordinator.getState().progression.xp).toBe(80);
     const harvested = countInventoryItem(
       coordinator.getState().economy.playerItems.inventory,
       'produce.turnip',
@@ -104,11 +108,21 @@ describe('FarmLoopCoordinator', () => {
     expect(harvested).toBeGreaterThanOrEqual(1);
 
     const coinsBeforeSale = coordinator.getState().economy.wallet.coins;
-    await expectCompleted(coordinator.perform('sell'));
+    const sale = await expectCompleted(coordinator.perform('sell'));
     expect(coordinator.getState().tutorial.step).toBe('completed');
     expect(coordinator.getState().economy.wallet.coins).toBe(
       coinsBeforeSale + 35,
     );
+    expect(coordinator.getState().progression).toEqual({
+      xp: 100,
+      level: 2,
+      unlockedCropIds: ['turnip', 'carrot'],
+    });
+    expect(sale.events).toContainEqual({
+      type: 'crop-unlocked',
+      cropId: 'carrot',
+      level: 2,
+    });
     expect(saves).toHaveLength(10);
     expect(saves.at(-1)).toBe(coordinator.getState());
   });
@@ -119,6 +133,7 @@ describe('FarmLoopCoordinator', () => {
 
     const current = coordinator.getState();
     expect(current.tutorial.step).toBe('sell');
+    expect(current.progression.xp).toBe(80);
     const transaction = sellInventoryItem(
       current.economy,
       createEconomyCatalogPort(gameContentCatalog),
@@ -138,9 +153,13 @@ describe('FarmLoopCoordinator', () => {
     );
 
     expect(coordinator.getState().tutorial.step).toBe('completed');
+    expect(coordinator.getState().progression.xp).toBe(100);
+    expect(coordinator.getState().progression.unlockedCropIds).toContain(
+      'carrot',
+    );
   });
 
-  it('rejects invalid actions with a clear reason and no save', async () => {
+  it('rejects invalid actions with a clear reason and no save or XP', async () => {
     const { coordinator, initial, saves, presentations } = createCoordinator();
     const result = await coordinator.perform('plant');
 
@@ -154,6 +173,7 @@ describe('FarmLoopCoordinator', () => {
     }
     expect(result.message.length).toBeGreaterThan(0);
     expect(coordinator.getState()).toBe(initial);
+    expect(coordinator.getState().progression.xp).toBe(0);
     expect(saves).toEqual([]);
     expect(presentations).toHaveLength(1);
   });
@@ -175,6 +195,38 @@ describe('FarmLoopCoordinator', () => {
     expect(result.message).toContain('disk full');
     expect(coordinator.getState()).toBe(initial);
     expect(initial.field.tiles[0]?.soil).toBe('untilled');
+    expect(initial.progression.xp).toBe(0);
+  });
+
+  it('does not award planting XP when the candidate save fails', async () => {
+    let saveCount = 0;
+    const { coordinator } = createCoordinator({
+      save: () => {
+        saveCount += 1;
+        return saveCount === 1
+          ? Promise.resolve()
+          : Promise.reject(new Error('quota exceeded'));
+      },
+    });
+
+    await expectCompleted(coordinator.perform('till'));
+    const beforePlant = coordinator.getState();
+    const result = await coordinator.perform('plant');
+
+    expect(result).toMatchObject({
+      status: 'save_failed',
+      action: 'plant',
+      code: 'save_failed',
+    });
+    expect(coordinator.getState()).toBe(beforePlant);
+    expect(coordinator.getState().progression.xp).toBe(0);
+    expect(coordinator.getState().field.tiles[0]?.crop).toBeNull();
+    expect(
+      countInventoryItem(
+        coordinator.getState().economy.playerItems.inventory,
+        'seed.turnip',
+      ),
+    ).toBe(5);
   });
 
   it('blocks concurrent actions until the first autosave completes', async () => {
@@ -198,7 +250,7 @@ describe('FarmLoopCoordinator', () => {
     expect(coordinator.getState().field.tiles[0]?.soil).toBe('tilled');
   });
 
-  it('skips tutorial without mutating starter gameplay state', async () => {
+  it('skips tutorial without mutating starter gameplay or progression state', async () => {
     const { coordinator, initial } = createCoordinator();
     const result = await expectCompleted(coordinator.perform('skip_tutorial'));
 
@@ -207,6 +259,7 @@ describe('FarmLoopCoordinator', () => {
     expect(result.state.farm).toBe(initial.farm);
     expect(result.state.field).toBe(initial.field);
     expect(result.state.economy).toBe(initial.economy);
+    expect(result.state.progression).toBe(initial.progression);
   });
 
   it('requires watering before advancing a planted crop day', async () => {
@@ -224,5 +277,6 @@ describe('FarmLoopCoordinator', () => {
     }
     expect(result.message).toContain('tưới');
     expect(coordinator.getState().farm.day).toBe(1);
+    expect(coordinator.getState().progression.xp).toBe(10);
   });
 });

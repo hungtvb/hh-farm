@@ -6,11 +6,17 @@ import {
   type EconomyTransactionErrorCode,
 } from '../../domain/economy/economyState.js';
 import { countInventoryItem } from '../../domain/inventory/inventoryState.js';
+import {
+  isSeedItemUnlocked,
+  requiredLevelForSeedItem,
+  type ProgressionState,
+} from '../../domain/progression/progressionState.js';
 
 export type ShopOfferDisabledReason =
   | 'insufficient_funds'
   | 'inventory_full'
-  | 'offer_locked';
+  | 'offer_locked'
+  | 'progression_locked';
 
 export type ShopOfferViewModel = Readonly<{
   offerId: string;
@@ -20,6 +26,7 @@ export type ShopOfferViewModel = Readonly<{
   quantity: number;
   buyPrice: number;
   unlockDay: number;
+  requiredLevel: 1 | 2 | 3 | null;
   disabled: boolean;
   disabledReason: ShopOfferDisabledReason | null;
 }>;
@@ -45,7 +52,7 @@ const keepSourceLabel: ItemLabelResolver = (_itemId, sourceName) => sourceName;
 
 function mapBuyFailure(
   code: EconomyTransactionErrorCode,
-): ShopOfferDisabledReason {
+): Exclude<ShopOfferDisabledReason, 'progression_locked'> {
   if (code === 'insufficient_funds') {
     return 'insufficient_funds';
   }
@@ -64,6 +71,7 @@ export function presentShop(
   catalog: EconomyCatalogPort,
   currentDay: number,
   resolveLabel: ItemLabelResolver = keepSourceLabel,
+  progression?: ProgressionState,
 ): ShopViewModel {
   if (!Number.isSafeInteger(currentDay) || currentDay < 1) {
     throw new Error('Shop current day must be a positive safe integer.');
@@ -78,14 +86,23 @@ export function presentShop(
         );
       }
 
-      const availability = buyShopOffer(state, catalog, {
-        offerId: offer.id,
-        purchaseCount: 1,
-        currentDay,
-      });
-      const disabledReason = availability.ok
+      const progressionLocked =
+        progression !== undefined &&
+        !isSeedItemUnlocked(progression, item.id);
+      const availability = progressionLocked
         ? null
-        : mapBuyFailure(availability.error.code);
+        : buyShopOffer(state, catalog, {
+            offerId: offer.id,
+            purchaseCount: 1,
+            currentDay,
+          });
+      const disabledReason: ShopOfferDisabledReason | null = progressionLocked
+        ? 'progression_locked'
+        : availability?.ok === true
+          ? null
+          : availability === null
+            ? null
+            : mapBuyFailure(availability.error.code);
 
       return Object.freeze({
         offerId: offer.id,
@@ -95,6 +112,7 @@ export function presentShop(
         quantity: offer.quantity,
         buyPrice: offer.buyPrice,
         unlockDay: offer.unlockDay,
+        requiredLevel: requiredLevelForSeedItem(item.id),
         disabled: disabledReason !== null,
         disabledReason,
       });

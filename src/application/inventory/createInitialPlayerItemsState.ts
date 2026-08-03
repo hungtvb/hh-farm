@@ -10,16 +10,12 @@ const STARTING_ITEMS = Object.freeze([
   Object.freeze({ itemId: 'tool.hoe', quantity: 1 }),
   Object.freeze({ itemId: 'tool.watering-can', quantity: 1 }),
   Object.freeze({ itemId: 'seed.turnip', quantity: 5 }),
-  Object.freeze({ itemId: 'seed.carrot', quantity: 3 }),
-  Object.freeze({ itemId: 'seed.strawberry', quantity: 2 }),
 ]);
 
 const STARTING_TOOLBAR = Object.freeze([
   'tool.hoe',
   'tool.watering-can',
   'seed.turnip',
-  'seed.carrot',
-  'seed.strawberry',
 ] as const);
 
 export function createInitialPlayerItemsState(

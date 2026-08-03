@@ -10,7 +10,7 @@ import {
 } from '../../src/domain/inventory/playerItemsState.js';
 
 describe('initial player items', () => {
-  it('uses validated catalog limits and expected starting bindings', () => {
+  it('uses validated catalog limits and reserves advanced seeds for unlocks', () => {
     const state = createInitialPlayerItemsState(gameContentCatalog);
 
     expect(state.inventory.slots).toHaveLength(12);
@@ -18,8 +18,8 @@ describe('initial player items', () => {
       'tool.hoe',
       'tool.watering-can',
       'seed.turnip',
-      'seed.carrot',
-      'seed.strawberry',
+      null,
+      null,
       null,
       null,
       null,
@@ -27,8 +27,8 @@ describe('initial player items', () => {
     expect(countInventoryItem(state.inventory, 'tool.hoe')).toBe(1);
     expect(countInventoryItem(state.inventory, 'tool.watering-can')).toBe(1);
     expect(countInventoryItem(state.inventory, 'seed.turnip')).toBe(5);
-    expect(countInventoryItem(state.inventory, 'seed.carrot')).toBe(3);
-    expect(countInventoryItem(state.inventory, 'seed.strawberry')).toBe(2);
+    expect(countInventoryItem(state.inventory, 'seed.carrot')).toBe(0);
+    expect(countInventoryItem(state.inventory, 'seed.strawberry')).toBe(0);
   });
 });
 
@@ -83,12 +83,12 @@ describe('presentPlayerItems', () => {
 
   it('uses total quantity for toolbar bindings across inventory stacks', () => {
     let state = createInitialPlayerItemsState(gameContentCatalog);
-    const cleared = bindToolbarItem(state, 5, 'seed.turnip');
-    expect(cleared.ok).toBe(true);
-    if (!cleared.ok) {
-      throw new Error(cleared.error.message);
+    const bound = bindToolbarItem(state, 5, 'seed.turnip');
+    expect(bound.ok).toBe(true);
+    if (!bound.ok) {
+      throw new Error(bound.error.message);
     }
-    state = cleared.state;
+    state = bound.state;
 
     const selected = selectToolbarSlot(state, 5);
     expect(selected.ok).toBe(true);
@@ -107,9 +107,16 @@ describe('presentPlayerItems', () => {
     });
   });
 
-  it('projects empty toolbar slots after the final item is consumed', () => {
+  it('clears every toolbar binding after the final item is consumed', () => {
     let state = createInitialPlayerItemsState(gameContentCatalog);
-    const removed = removePlayerItem(state, 'seed.strawberry', 2);
+    const bound = bindToolbarItem(state, 4, 'seed.turnip');
+    expect(bound.ok).toBe(true);
+    if (!bound.ok) {
+      throw new Error(bound.error.message);
+    }
+    state = bound.state;
+
+    const removed = removePlayerItem(state, 'seed.turnip', 5);
     expect(removed.ok).toBe(true);
     if (!removed.ok) {
       throw new Error(removed.error.message);
@@ -117,15 +124,18 @@ describe('presentPlayerItems', () => {
     state = removed.state;
 
     const view = presentPlayerItems(state, gameContentCatalog);
+    expect(view.toolbarSlots[2]).toEqual({
+      slotIndex: 2,
+      selected: false,
+      item: null,
+    });
     expect(view.toolbarSlots[4]).toEqual({
       slotIndex: 4,
       selected: false,
       item: null,
     });
     expect(
-      view.inventorySlots.some(
-        (slot) => slot.item?.itemId === 'seed.strawberry',
-      ),
+      view.inventorySlots.some((slot) => slot.item?.itemId === 'seed.turnip'),
     ).toBe(false);
   });
 });

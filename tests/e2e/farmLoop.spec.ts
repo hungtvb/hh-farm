@@ -32,21 +32,37 @@ test.describe('@production-loop autosaved farm tutorial', () => {
     const loop = page.locator('.hh-farm-loop[data-ready="true"]');
     const feedback = page.locator('.hh-farm-loop__feedback');
     const stats = page.locator('.hh-farm-loop__stats');
+    const settings = page.locator('.hh-settings-modal');
+    const carrotOffer = page.locator(
+      '.hh-shop-card[data-item-id="seed.carrot"]',
+    );
+    const strawberryOffer = page.locator(
+      '.hh-shop-card[data-item-id="seed.strawberry"]',
+    );
 
     await expect(loop).toBeVisible({ timeout: 10_000 });
     await expect(loop).toHaveAttribute('data-load-status', 'empty');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'till');
     await expect(hud).toHaveAttribute('data-coins', '250');
+    await expect(settings).toHaveAttribute('data-level', '1');
+    await expect(settings).toHaveAttribute('data-xp', '0');
+    await expect(carrotOffer).toBeDisabled();
+    await expect(carrotOffer).toHaveAttribute(
+      'data-disabled-reason',
+      'progression_locked',
+    );
 
     await clickAction(page, 'plant');
     await expect(loop).toHaveAttribute('data-last-result', 'rejected');
     await expect(feedback).not.toHaveText('');
     await expect(loop).toHaveAttribute('data-soil', 'untilled');
+    await expect(settings).toHaveAttribute('data-xp', '0');
 
     await clickAction(page, 'till');
     await expect(loop).toHaveAttribute('data-last-result', 'completed');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
     await expect(loop).toHaveAttribute('data-soil', 'tilled');
+    await expect(settings).toHaveAttribute('data-xp', '0');
 
     await page.reload();
     await expect(loop).toBeVisible({ timeout: 10_000 });
@@ -57,6 +73,7 @@ test.describe('@production-loop autosaved farm tutorial', () => {
     await clickAction(page, 'plant');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'water');
     await expect(stats).toContainText('Hạt: 4');
+    await expect(settings).toHaveAttribute('data-xp', '10');
 
     for (let index = 0; index < 3; index += 1) {
       await clickAction(page, 'water');
@@ -76,11 +93,21 @@ test.describe('@production-loop autosaved farm tutorial', () => {
     await clickAction(page, 'harvest');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'sell');
     await expect(stats).toContainText(/Củ cải: [1-9]/);
+    await expect(settings).toHaveAttribute('data-xp', '80');
 
     await clickAction(page, 'sell');
     await expect(loop).toHaveAttribute('data-tutorial-step', 'completed');
     await expect(loop).toHaveAttribute('data-tutorial-complete', 'true');
     await expect(hud).toHaveAttribute('data-coins', '285');
+    await expect(settings).toHaveAttribute('data-level', '2');
+    await expect(settings).toHaveAttribute('data-xp', '100');
+    await expect(carrotOffer).toBeEnabled();
+    await expect(carrotOffer).toHaveAttribute('data-disabled-reason', '');
+    await expect(strawberryOffer).toBeDisabled();
+    await expect(strawberryOffer).toHaveAttribute(
+      'data-disabled-reason',
+      'progression_locked',
+    );
 
     await page.screenshot({
       path: 'test-results/hh-farm-loop-completed.png',
@@ -93,6 +120,9 @@ test.describe('@production-loop autosaved farm tutorial', () => {
     await expect(loop).toHaveAttribute('data-tutorial-step', 'completed');
     await expect(loop).toHaveAttribute('data-day', '4');
     await expect(hud).toHaveAttribute('data-coins', '285');
+    await expect(settings).toHaveAttribute('data-level', '2');
+    await expect(settings).toHaveAttribute('data-xp', '100');
+    await expect(carrotOffer).toBeEnabled();
 
     expect(runtimeErrors).toEqual([]);
   });
@@ -113,6 +143,7 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       const hud = page.locator('.game-hud[data-ready="true"]');
       const loop = page.locator('.hh-farm-loop[data-ready="true"]');
       const stats = page.locator('.hh-farm-loop__stats');
+      const settings = page.locator('.hh-settings-modal');
 
       await expect(loop).toBeVisible({ timeout: 10_000 });
       await page.locator('.hh-farm-loop__skip[data-action="skip_tutorial"]').tap();
@@ -124,6 +155,8 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       await expect(hud).toHaveAttribute('data-coins', '250');
       await expect(stats).toContainText('Hạt: 5');
       await expect(stats).toContainText('Củ cải: 0');
+      await expect(settings).toHaveAttribute('data-xp', '0');
+      await expect(settings).toHaveAttribute('data-level', '1');
 
       await page.screenshot({
         path: 'test-results/hh-farm-loop-skip-mobile.png',
@@ -137,6 +170,7 @@ test.describe('@production-loop autosaved farm tutorial', () => {
       await expect(loop).toHaveAttribute('data-soil', 'untilled');
       await expect(loop).toHaveAttribute('data-day', '1');
       await expect(hud).toHaveAttribute('data-coins', '250');
+      await expect(settings).toHaveAttribute('data-xp', '0');
 
       expect(runtimeErrors).toEqual([]);
     });

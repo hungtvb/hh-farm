@@ -13,12 +13,14 @@ export type LoadFarmLoopResult =
       source: 'current';
       envelope: FarmLoopSaveEnvelope;
       state: FarmLoopState;
+      migratedFrom: 1 | null;
     }>
   | Readonly<{
       status: 'recovered';
       source: 'previous';
       envelope: FarmLoopSaveEnvelope;
       state: FarmLoopState;
+      migratedFrom: 1 | null;
       currentError: string;
     }>
   | Readonly<{
@@ -45,6 +47,7 @@ export class FarmLoopSaveRepository {
         farm: state.farm,
         field: state.field,
         playerItems: state.economy.playerItems,
+        progression: state.progression,
         tutorial: state.tutorial,
       },
       this.gameVersion,
@@ -79,6 +82,7 @@ export class FarmLoopSaveRepository {
         source: 'current',
         envelope: current.envelope,
         state: current.state,
+        migratedFrom: current.migratedFrom,
       };
     }
 
@@ -93,6 +97,7 @@ export class FarmLoopSaveRepository {
         source: 'previous',
         envelope: previous.envelope,
         state: previous.state,
+        migratedFrom: previous.migratedFrom,
         currentError: current.error,
       };
     }

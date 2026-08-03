@@ -50,7 +50,7 @@ describe('farm loop save repository', () => {
     ).resolves.toEqual({ status: 'empty' });
   });
 
-  it('round-trips field, wallet, inventory, toolbar and tutorial state', async () => {
+  it('round-trips field, wallet, inventory, toolbar, progression and tutorial state', async () => {
     const storage = new MemorySaveStorage();
     const repository = createRepository(storage);
     const state = createInitialFarmLoopState(gameContentCatalog);
@@ -63,14 +63,73 @@ describe('farm loop save repository', () => {
       throw new Error(`Expected loaded, received ${result.status}.`);
     }
 
-    expect(result.envelope.schemaVersion).toBe(1);
+    expect(result.envelope.schemaVersion).toBe(2);
     expect(result.envelope.savedAt).toBe(FIXED_DATE.toISOString());
+    expect(result.migratedFrom).toBeNull();
     expect(result.state).toEqual(state);
     expect(result.state.economy.wallet.coins).toBe(250);
     expect(result.state.economy.playerItems.toolbar.bindings[0]).toBe(
       'tool.hoe',
     );
+    expect(result.state.progression).toEqual({
+      xp: 0,
+      level: 1,
+      unlockedCropIds: ['turnip'],
+    });
     expect(result.state.tutorial.step).toBe('till');
+  });
+
+  it('migrates a completed v1 loop save to level two progression', async () => {
+    const storage = new MemorySaveStorage();
+    const repository = createRepository(storage);
+    const state = createInitialFarmLoopState(gameContentCatalog);
+
+    await repository.save(state);
+    const saved = storage.current as {
+      readonly gameVersion: string;
+      readonly savedAt: string;
+      readonly payload: Readonly<{
+        farm: unknown;
+        field: unknown;
+        playerItems: unknown;
+      }>;
+    };
+    storage.current = {
+      schemaVersion: 1,
+      gameVersion: saved.gameVersion,
+      savedAt: saved.savedAt,
+      payload: {
+        farm: saved.payload.farm,
+        field: saved.payload.field,
+        playerItems: saved.payload.playerItems,
+        tutorial: {
+          step: 'completed',
+          skipped: false,
+          completedSteps: [
+            'till',
+            'plant',
+            'water',
+            'next_day',
+            'harvest',
+            'sell',
+          ],
+        },
+      },
+    };
+
+    const result = await repository.load();
+    expect(result.status).toBe('loaded');
+    if (result.status !== 'loaded') {
+      throw new Error(`Expected loaded, received ${result.status}.`);
+    }
+
+    expect(result.migratedFrom).toBe(1);
+    expect(result.envelope.schemaVersion).toBe(2);
+    expect(result.state.progression).toEqual({
+      xp: 100,
+      level: 2,
+      unlockedCropIds: ['turnip', 'carrot'],
+    });
   });
 
   it('rotates and recovers the previous valid loop save', async () => {

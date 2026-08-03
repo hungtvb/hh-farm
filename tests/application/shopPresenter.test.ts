@@ -14,6 +14,7 @@ import {
   type InventorySlot,
 } from '../../src/domain/inventory/inventoryState.js';
 import { createPlayerItemsState } from '../../src/domain/inventory/playerItemsState.js';
+import { createProgressionState } from '../../src/domain/progression/progressionState.js';
 
 const catalog = createEconomyCatalogPort(gameContentCatalog);
 
@@ -44,7 +45,7 @@ describe('economy catalog adapter', () => {
 });
 
 describe('initial economy state', () => {
-  it('uses the shared starting player items and coin fixture', () => {
+  it('starts with tools and turnip seeds while advanced seeds remain locked', () => {
     const state = createInitialEconomyState(gameContentCatalog);
 
     expect(state.wallet.coins).toBe(INITIAL_COIN_BALANCE);
@@ -53,9 +54,12 @@ describe('initial economy state', () => {
       'tool.hoe',
       'tool.watering-can',
       'seed.turnip',
-      'seed.carrot',
-      'seed.strawberry',
+      null,
+      null,
     ]);
+    expect(
+      state.playerItems.inventory.slots.filter((slot) => slot !== null),
+    ).toHaveLength(3);
   });
 });
 
@@ -80,14 +84,61 @@ describe('presentShop', () => {
       quantity: 1,
       buyPrice: 20,
       unlockDay: 1,
+      requiredLevel: 1,
       disabled: false,
       disabledReason: null,
     });
     expect(view.offers[2]).toMatchObject({
       offerId: 'shop.seed.strawberry',
       buyPrice: 65,
+      requiredLevel: 3,
       disabled: true,
       disabledReason: 'offer_locked',
+    });
+  });
+
+  it('locks carrot and strawberry by progression even when day rules allow them', () => {
+    const state = createInitialEconomyState(gameContentCatalog);
+    const levelOne = presentShop(
+      state,
+      catalog,
+      3,
+      undefined,
+      createProgressionState(0),
+    );
+
+    expect(levelOne.offers[0]).toMatchObject({
+      itemId: 'seed.turnip',
+      disabled: false,
+      disabledReason: null,
+    });
+    expect(levelOne.offers[1]).toMatchObject({
+      itemId: 'seed.carrot',
+      requiredLevel: 2,
+      disabled: true,
+      disabledReason: 'progression_locked',
+    });
+    expect(levelOne.offers[2]).toMatchObject({
+      itemId: 'seed.strawberry',
+      requiredLevel: 3,
+      disabled: true,
+      disabledReason: 'progression_locked',
+    });
+
+    const levelTwo = presentShop(
+      state,
+      catalog,
+      3,
+      undefined,
+      createProgressionState(100),
+    );
+    expect(levelTwo.offers[1]).toMatchObject({
+      disabled: false,
+      disabledReason: null,
+    });
+    expect(levelTwo.offers[2]).toMatchObject({
+      disabled: true,
+      disabledReason: 'progression_locked',
     });
   });
 
@@ -117,7 +168,7 @@ describe('presentShop', () => {
     const state = createInitialEconomyState(gameContentCatalog);
     const view = presentShop(state, catalog, 3);
 
-    expect(view.inventory).toHaveLength(5);
+    expect(view.inventory).toHaveLength(3);
     expect(
       view.inventory.find((item) => item.itemId === 'seed.turnip'),
     ).toMatchObject({

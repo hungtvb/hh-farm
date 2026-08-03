@@ -86,7 +86,7 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
 
   await page.keyboard.press('3');
   await expect(hud).toHaveAttribute('data-selected-slot', '3');
-  await expect(page.locator('.hh-hotbar-tooltip')).toHaveText('Củ cải');
+  await expect(page.locator('.hh-hotbar-tooltip')).toHaveText('Hạt củ cải');
 
   await expectInsideViewport(page.locator('.hh-topbar'), 1280, 720);
   await expectInsideViewport(page.locator('.hh-hotbar'), 1280, 720);

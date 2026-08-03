@@ -20,6 +20,11 @@ import {
 } from '../../domain/farming/farmTileState.js';
 import type { PlayerItemsState } from '../../domain/inventory/playerItemsState.js';
 import {
+  observeProgressionEvents,
+  type ProgressionDomainEvent,
+  type ProgressionObservedEvent,
+} from '../../domain/progression/progressionState.js';
+import {
   observeTutorialEvent,
   skipTutorial,
   type TutorialObservedEvent,
@@ -57,6 +62,7 @@ export type FarmLoopEvent =
   | FarmingDomainEvent
   | DayTransitionEvent
   | EconomyTransactionEvent
+  | ProgressionDomainEvent
   | Readonly<{ type: 'tutorial-skipped' }>;
 
 export type FarmLoopFailureCode =
@@ -145,7 +151,32 @@ function applyTutorialEvents(
     farm: state.farm,
     field: state.field,
     economy: state.economy,
+    progression: state.progression,
     tutorial,
+  });
+}
+
+function applyProgression(
+  state: FarmLoopState,
+  events: readonly ProgressionObservedEvent[],
+): Readonly<{
+  state: FarmLoopState;
+  events: readonly ProgressionDomainEvent[];
+}> {
+  const result = observeProgressionEvents(state.progression, events);
+  if (result.state === state.progression) {
+    return Object.freeze({ state, events: result.events });
+  }
+
+  return Object.freeze({
+    state: createFarmLoopState({
+      farm: state.farm,
+      field: state.field,
+      economy: state.economy,
+      progression: result.state,
+      tutorial: state.tutorial,
+    }),
+    events: result.events,
   });
 }
 
@@ -164,6 +195,7 @@ function withFieldAndPlayerItems(
     farm: state.farm,
     field,
     economy: createEconomyState(state.economy.wallet, playerItems),
+    progression: state.progression,
     tutorial: state.tutorial,
   });
 }
@@ -210,16 +242,17 @@ export class FarmLoopCoordinator {
   ): Promise<FarmLoopResult> {
     return this.execute(action, () => {
       const observedEvents = events.filter(isEconomyTransactionEvent);
-      const state =
+      const withTutorial =
         observedEvents.length === 0
           ? candidate
           : applyTutorialEvents(candidate, observedEvents);
+      const progression = applyProgression(withTutorial, observedEvents);
 
       return Object.freeze({
         status: 'completed' as const,
         action,
-        state,
-        events: Object.freeze([...events]),
+        state: progression.state,
+        events: Object.freeze([...events, ...progression.events]),
       });
     });
   }
@@ -278,6 +311,7 @@ export class FarmLoopCoordinator {
         farm: this.state.farm,
         field: this.state.field,
         economy: this.state.economy,
+        progression: this.state.progression,
         tutorial,
       });
 
@@ -371,12 +405,13 @@ export class FarmLoopCoordinator {
       result.state.inventory,
     );
     const withTutorial = applyTutorialEvents(candidate, result.events);
+    const progression = applyProgression(withTutorial, result.events);
 
     return Object.freeze({
       status: 'completed',
       action,
-      state: withTutorial,
-      events: result.events,
+      state: progression.state,
+      events: Object.freeze([...result.events, ...progression.events]),
     });
   }
 
@@ -411,6 +446,7 @@ export class FarmLoopCoordinator {
       }),
       field: transition.state.field,
       economy: this.state.economy,
+      progression: this.state.progression,
       tutorial: this.state.tutorial,
     });
     candidate = applyTutorialEvents(candidate, transition.events);
@@ -460,15 +496,17 @@ export class FarmLoopCoordinator {
       }),
       field: this.state.field,
       economy: result.state,
+      progression: this.state.progression,
       tutorial: this.state.tutorial,
     });
     const withTutorial = applyTutorialEvents(candidate, result.events);
+    const progression = applyProgression(withTutorial, result.events);
 
     return Object.freeze({
       status: 'completed',
       action: 'sell',
-      state: withTutorial,
-      events: result.events,
+      state: progression.state,
+      events: Object.freeze([...result.events, ...progression.events]),
     });
   }
 }

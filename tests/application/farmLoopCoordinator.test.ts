@@ -25,8 +25,9 @@ function createCoordinator(options?: {
     {
       save:
         options?.save ??
-        (async (state) => {
+        ((state) => {
           saves.push(state);
+          return Promise.resolve();
         }),
     },
     {
@@ -105,8 +106,8 @@ describe('FarmLoopCoordinator', () => {
       action: 'plant',
       code: 'soil_not_tilled',
     });
-    if (result.status === 'completed') {
-      throw new Error('Expected the plant action to be rejected.');
+    if (result.status !== 'rejected') {
+      throw new Error(`Expected rejected, received ${result.status}.`);
     }
     expect(result.message.length).toBeGreaterThan(0);
     expect(coordinator.getState()).toBe(initial);
@@ -116,9 +117,7 @@ describe('FarmLoopCoordinator', () => {
 
   it('does not commit a candidate when autosave fails', async () => {
     const { coordinator, initial } = createCoordinator({
-      save: async () => {
-        throw new Error('disk full');
-      },
+      save: () => Promise.reject(new Error('disk full')),
     });
     const result = await coordinator.perform('till');
 
@@ -126,8 +125,11 @@ describe('FarmLoopCoordinator', () => {
       status: 'save_failed',
       action: 'till',
       code: 'save_failed',
-      message: expect.stringContaining('disk full'),
     });
+    if (result.status !== 'save_failed') {
+      throw new Error(`Expected save_failed, received ${result.status}.`);
+    }
+    expect(result.message).toContain('disk full');
     expect(coordinator.getState()).toBe(initial);
     expect(initial.field.tiles[0]?.soil).toBe('untilled');
   });
@@ -138,7 +140,7 @@ describe('FarmLoopCoordinator', () => {
       releaseSave = resolve;
     });
     const { coordinator } = createCoordinator({
-      save: async () => saveBlocker,
+      save: () => saveBlocker,
     });
 
     const first = coordinator.perform('till');
@@ -173,8 +175,11 @@ describe('FarmLoopCoordinator', () => {
     expect(result).toMatchObject({
       status: 'rejected',
       code: 'crop_not_ready_for_day',
-      message: expect.stringContaining('tưới'),
     });
+    if (result.status !== 'rejected') {
+      throw new Error(`Expected rejected, received ${result.status}.`);
+    }
+    expect(result.message).toContain('tưới');
     expect(coordinator.getState().farm.day).toBe(1);
   });
 });

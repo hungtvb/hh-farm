@@ -35,6 +35,14 @@ export type ProgressionResult = Readonly<{
 const CARROT_UNLOCK_XP = 100;
 const STRAWBERRY_UNLOCK_XP = 200;
 
+const SEED_UNLOCKS: Readonly<
+  Record<string, Readonly<{ cropId: UnlockableCropId; level: 1 | 2 | 3 }>>
+> = Object.freeze({
+  'seed.turnip': Object.freeze({ cropId: 'turnip', level: 1 }),
+  'seed.carrot': Object.freeze({ cropId: 'carrot', level: 2 }),
+  'seed.strawberry': Object.freeze({ cropId: 'strawberry', level: 3 }),
+});
+
 function requireXp(xp: number): number {
   if (!Number.isSafeInteger(xp) || xp < 0) {
     throw new Error('Farm XP must be a non-negative safe integer.');
@@ -74,6 +82,20 @@ export function createProgressionState(xp = 0): ProgressionState {
     level,
     unlockedCropIds: unlockedCropsForLevel(level),
   });
+}
+
+export function requiredLevelForSeedItem(
+  itemId: string,
+): 1 | 2 | 3 | null {
+  return SEED_UNLOCKS[itemId]?.level ?? null;
+}
+
+export function isSeedItemUnlocked(
+  state: ProgressionState,
+  itemId: string,
+): boolean {
+  const unlock = SEED_UNLOCKS[itemId];
+  return unlock === undefined || state.unlockedCropIds.includes(unlock.cropId);
 }
 
 function rewardForEvent(

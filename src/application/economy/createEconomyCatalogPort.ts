@@ -9,16 +9,14 @@ function toItemContent(
   catalog: ContentCatalog,
   itemId: string,
 ): EconomyItemContent | undefined {
-  const item = catalog.getItem(itemId);
-  return item === undefined ? undefined : item;
+  return catalog.getItem(itemId) ?? undefined;
 }
 
 function toOfferContent(
   catalog: ContentCatalog,
   offerId: string,
 ): EconomyShopOfferContent | undefined {
-  const offer = catalog.getShopOffer(offerId);
-  return offer === undefined ? undefined : offer;
+  return catalog.getShopOffer(offerId) ?? undefined;
 }
 
 export function createEconomyCatalogPort(

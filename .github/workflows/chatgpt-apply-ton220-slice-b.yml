@@ -43,6 +43,8 @@ jobs:
           feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
           old_head="28474aef0bfacf45413a9c49642263d4bfd47198"
           main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
           git fetch origin "$feature_ref" refs/heads/main
           test "$(git rev-parse "origin/feat/ton-220-vertical-slice-art-pack")" = "$old_head"
           test "$(git rev-parse origin/main)" = "$main_head"
@@ -54,8 +56,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "chatgpt-sandbox"
-          git config user.email "chatgpt-sandbox@users.noreply.github.com"
           git commit -m "feat: complete TON-220 generated player source pack (#33)"
           test "$(git rev-parse HEAD^{tree})" = "4f5e90f4b972aa184004e65187ed59451bbefc3e"
           git push --force-with-lease=refs/heads/feat/ton-220-vertical-slice-art-pack:28474aef0bfacf45413a9c49642263d4bfd47198 origin HEAD:refs/heads/feat/ton-220-vertical-slice-art-pack

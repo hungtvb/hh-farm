@@ -402,7 +402,7 @@ export async function mountGameExperience(
       },
       onSave: async (nextSettings) => {
         try {
-          settingsRepository.save(nextSettings);
+          await settingsRepository.save(nextSettings);
         } catch (error) {
           return Object.freeze({
             status: 'error' as const,

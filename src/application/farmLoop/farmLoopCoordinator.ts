@@ -73,14 +73,14 @@ export type FarmLoopResult =
       code: FarmLoopFailureCode;
       message: string;
       state: FarmLoopState;
-    }>;
+    }>
   | Readonly<{
       status: 'save_failed';
       action: FarmLoopAction;
       code: 'save_failed';
       message: string;
       state: FarmLoopState;
-    }>;
+    }>
   | Readonly<{
       status: 'action_in_progress';
       action: FarmLoopAction;
@@ -96,6 +96,29 @@ export type FarmLoopAutosavePort = Readonly<{
 export type FarmLoopPresentationPort = Readonly<{
   present: (result: FarmLoopResult) => Promise<void> | void;
 }>;
+
+type PlayerFarmingResult =
+  | Readonly<{
+      ok: true;
+      state: Readonly<{
+        field: FarmFieldState;
+        inventory: PlayerItemsState;
+      }>;
+      events: readonly FarmingDomainEvent[];
+    }>
+  | Readonly<{
+      ok: false;
+      state: Readonly<{
+        field: FarmFieldState;
+        inventory: PlayerItemsState;
+      }>;
+      events: readonly [];
+      error: Readonly<{
+        code: FarmingCommandErrorCode;
+        tileId: string;
+        message: string;
+      }>;
+    }>;
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -289,10 +312,7 @@ export class FarmLoopCoordinator {
 
   private fromFarmingResult(
     action: FarmLoopAction,
-    result: ReturnType<typeof tillSoil<PlayerItemsState>> |
-      ReturnType<typeof plantSeed<PlayerItemsState>> |
-      ReturnType<typeof waterTile<PlayerItemsState>> |
-      ReturnType<typeof harvestCrop<PlayerItemsState>>,
+    result: PlayerFarmingResult,
   ): FarmLoopResult {
     if (!result.ok) {
       return rejected(

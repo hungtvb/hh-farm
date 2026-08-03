@@ -359,3 +359,9 @@ html[data-reduced-motion="true"] *::after {
       max(14px, env(safe-area-inset-left));
   }
 }
+
+@media (max-width: 840px) and (orientation: portrait) {
+  .hh-settings-toggle {
+    top: max(174px, calc(env(safe-area-inset-top) + 138px));
+  }
+}

@@ -43,10 +43,13 @@ const FARM_TILE_HIT_AREA_SIZE = 72;
 const WORLD_OBJECT_HIT_AREA_SIZE = 84;
 const MAX_TAP_DISTANCE = 18;
 const MAX_TAP_DURATION_MS = 650;
+const PORTRAIT_WORLD_QUERY = '(max-width: 840px) and (orientation: portrait)';
+const PORTRAIT_CAMERA_ZOOM = 0.5;
+const PORTRAIT_CAMERA_FOLLOW_OFFSET_Y = 80;
 const BED_TARGET_ID = 'world:bed';
 const SHIPPING_BIN_TARGET_ID = 'world:shipping-bin';
-const BED_POSITION = Object.freeze({ x: 672, y: 448 });
-const SHIPPING_BIN_POSITION = Object.freeze({ x: 288, y: 448 });
+const BED_POSITION = Object.freeze({ x: 640, y: 448 });
+const SHIPPING_BIN_POSITION = Object.freeze({ x: 320, y: 448 });
 
 let farmSceneCreateCount = 0;
 let farmSceneShutdownCount = 0;
@@ -112,6 +115,7 @@ function readableAction(action: FarmLoopTutorialAction): string {
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
   private farmRuntime: FarmGameRuntime | undefined;
+  private portraitWorldMediaQuery: MediaQueryList | undefined;
   private actionKeys: Phaser.Input.Keyboard.Key[] = [];
   private readonly farmTileVisuals = new Map<string, FarmTileVisual>();
   private readonly worldObjectVisuals = new Map<string, WorldObjectVisual>();
@@ -125,6 +129,10 @@ export class FarmScene extends Phaser.Scene {
     if (!this.actionPending && this.directIntent === undefined) {
       void this.performRecommendedAction();
     }
+  };
+
+  private readonly handleViewportProfileChange = (): void => {
+    this.applyCameraProfile();
   };
 
   public constructor() {
@@ -207,7 +215,13 @@ export class FarmScene extends Phaser.Scene {
       this.playerController.sprite.x,
       this.playerController.sprite.y,
     );
-    camera.startFollow(this.playerController.sprite, true, 1, 1);
+    this.portraitWorldMediaQuery = window.matchMedia(PORTRAIT_WORLD_QUERY);
+    this.portraitWorldMediaQuery.addEventListener(
+      'change',
+      this.handleViewportProfileChange,
+    );
+    window.addEventListener('resize', this.handleViewportProfileChange);
+    this.applyCameraProfile();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
   }
@@ -216,6 +230,36 @@ export class FarmScene extends Phaser.Scene {
     this.playerController?.update(delta);
     this.renderFarmState(false);
     this.updateTargetFeedback();
+  }
+
+  private applyCameraProfile(): void {
+    const player = this.playerController;
+    if (player === undefined) {
+      return;
+    }
+
+    const portraitWorldFirst =
+      this.portraitWorldMediaQuery?.matches ??
+      window.matchMedia(PORTRAIT_WORLD_QUERY).matches;
+    const cameraZoom = portraitWorldFirst ? PORTRAIT_CAMERA_ZOOM : 1;
+    const followOffsetY = portraitWorldFirst
+      ? PORTRAIT_CAMERA_FOLLOW_OFFSET_Y
+      : 0;
+    const camera = this.cameras.main;
+
+    camera.setZoom(cameraZoom);
+    camera.startFollow(
+      player.sprite,
+      true,
+      1,
+      1,
+      0,
+      followOffsetY,
+    );
+    this.game.canvas.dataset.cameraProfile = portraitWorldFirst
+      ? 'portrait-world-first'
+      : 'desktop';
+    this.game.canvas.dataset.cameraZoom = cameraZoom.toFixed(2);
   }
 
   private createAuthoritativeFarmGrid(
@@ -758,6 +802,8 @@ export class FarmScene extends Phaser.Scene {
     canvas.dataset.worldLastAction = action;
     canvas.dataset.worldLastInteractionId = target.id;
     canvas.dataset.worldLastInteractionKind = target.kind;
+    canvas.dataset.worldLastInteractionX = target.x.toFixed(2);
+    canvas.dataset.worldLastInteractionY = target.y.toFixed(2);
     if (action === 'sell') {
       delete canvas.dataset.worldLastActionTileId;
     } else {
@@ -781,6 +827,12 @@ export class FarmScene extends Phaser.Scene {
     this.playerController?.destroy();
     this.playerController = undefined;
     this.farmRuntime = undefined;
+    this.portraitWorldMediaQuery?.removeEventListener(
+      'change',
+      this.handleViewportProfileChange,
+    );
+    this.portraitWorldMediaQuery = undefined;
+    window.removeEventListener('resize', this.handleViewportProfileChange);
     for (const key of this.actionKeys) {
       key.off('down', this.handleActionInput);
     }

@@ -108,15 +108,36 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
   await expectInsideViewport(page.locator('.hh-topbar'), 390, 844);
   await expectInsideViewport(page.locator('.hh-hotbar'), 390, 844);
 
-  const canvasBox = await page.locator('canvas[data-scene="farm"]').boundingBox();
-  const promptBox = await page.locator('.hh-action-prompt').boundingBox();
-  expect(canvasBox).not.toBeNull();
-  expect(promptBox).not.toBeNull();
+  const canvas = page.locator('canvas[data-scene="farm"]');
+  const compactGuide = page.locator('.hh-farm-loop[data-ready="true"]');
+  const canvasBox = await canvas.boundingBox();
+  const guideBox = await compactGuide.boundingBox();
 
-  if (canvasBox !== null && promptBox !== null) {
-    expect(canvasBox.y).toBeLessThan(110);
-    expect(promptBox.y).toBeGreaterThanOrEqual(
-      canvasBox.y + canvasBox.height + 8,
+  await expect(page.locator('.hh-action-prompt')).toBeHidden();
+  await expect(page.locator('.hh-farm-loop__stage')).toBeHidden();
+  await expect(page.locator('.hh-farm-loop__actions')).toBeHidden();
+  await expect(compactGuide).toHaveAttribute(
+    'data-interaction-mode',
+    'direct-manipulation',
+  );
+  await expect(canvas).toHaveAttribute(
+    'data-camera-profile',
+    'portrait-world-first',
+  );
+  await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
+  await expectInsideViewport(compactGuide, 390, 844);
+
+  expect(canvasBox).not.toBeNull();
+  expect(guideBox).not.toBeNull();
+
+  if (canvasBox !== null && guideBox !== null) {
+    expect(canvasBox.width).toBeGreaterThan(1_300);
+    expect(canvasBox.height).toBeGreaterThan(800);
+    expect(canvasBox.x).toBeLessThan(-400);
+    expect(guideBox.height).toBeLessThan(90);
+    expect(guideBox.y).toBeGreaterThanOrEqual(canvasBox.y + 60);
+    expect(guideBox.y + guideBox.height).toBeLessThan(
+      canvasBox.y + canvasBox.height * 0.2,
     );
   }
 
@@ -124,6 +145,10 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
     path: 'test-results/hh-farm-ui-mobile.png',
     fullPage: true,
   });
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(canvas).toHaveAttribute('data-camera-profile', 'desktop');
+  await expect(canvas).toHaveAttribute('data-camera-zoom', '1.00');
 
   expect(runtimeErrors).toEqual([]);
 });

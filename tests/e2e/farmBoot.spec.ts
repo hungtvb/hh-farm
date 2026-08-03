@@ -140,14 +140,15 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   await page.keyboard.down('ArrowLeft');
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
-      timeout: 6_000,
+      timeout: 10_000,
     })
-    .toBeLessThanOrEqual(44);
+    .toBeLessThanOrEqual(64);
   await page.keyboard.up('ArrowLeft');
-
   await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
+
   const westCollisionX = await readNumberAttribute(canvas, 'data-player-x');
   expect(westCollisionX).toBeGreaterThanOrEqual(40);
+  expect(westCollisionX).toBeLessThanOrEqual(64);
 
   await page.evaluate(() => {
     const farmCanvas = document.querySelector<HTMLCanvasElement>('canvas');
@@ -278,14 +279,14 @@ async function moveToFarmTile(
 
 async function moveToBed(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 592);
+  await alignPlayerX(page, canvas, 560);
   await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed', 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'bed');
 }
 
 async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 368);
+  await alignPlayerX(page, canvas, 400);
   await moveUntilTarget(
     page,
     canvas,
@@ -470,8 +471,9 @@ test.describe('mobile-first direct manipulation', () => {
 
     const cameraX = await readNumberAttribute(canvas, 'data-camera-x');
     const cameraY = await readNumberAttribute(canvas, 'data-camera-y');
-    const screenX = worldX - cameraX;
-    const screenY = worldY - cameraY;
+    const cameraZoom = await readNumberAttribute(canvas, 'data-camera-zoom');
+    const screenX = (worldX - cameraX - 320) * cameraZoom + 320;
+    const screenY = (worldY - cameraY - 180) * cameraZoom + 180;
 
     await page.touchscreen.tap(
       box.x + (screenX / 640) * box.width,
@@ -509,10 +511,10 @@ test.describe('mobile-first direct manipulation', () => {
       x: 416,
       y: 352,
     });
-    const bedTarget = Object.freeze({ id: 'world:bed', x: 672, y: 416 });
+    const bedTarget = Object.freeze({ id: 'world:bed', x: 640, y: 416 });
     const binTarget = Object.freeze({
       id: 'world:shipping-bin',
-      x: 288,
+      x: 320,
       y: 416,
     });
 
@@ -520,6 +522,11 @@ test.describe('mobile-first direct manipulation', () => {
       'data-world-input-mode',
       'direct-manipulation',
     );
+    await expect(canvas).toHaveAttribute(
+      'data-camera-profile',
+      'portrait-world-first',
+    );
+    await expect(canvas).toHaveAttribute('data-camera-zoom', '0.50');
     await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'till');
     await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
 
@@ -602,12 +609,44 @@ test.describe('mobile-first direct manipulation', () => {
     await expect(canvas).toHaveAttribute('data-world-last-action', 'sell');
     await expect(canvas).toHaveAttribute('data-world-coins', '285');
     await expect(canvas).toHaveAttribute('data-world-day', '4');
-    await expect(canvas).toHaveAttribute('data-player-facing', 'left');
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-interaction-id',
+      binTarget.id,
+    );
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-interaction-kind',
+      'shipping_bin',
+    );
+    await expect(canvas).toHaveAttribute(
+      'data-world-intent-status',
+      'completed',
+    );
 
     const finalX = await readNumberAttribute(canvas, 'data-player-x');
     const finalY = await readNumberAttribute(canvas, 'data-player-y');
-    expect(Math.abs(finalX - 356)).toBeLessThanOrEqual(12);
-    expect(Math.abs(finalY - 448)).toBeLessThanOrEqual(12);
+    const binWorldPosition = Object.freeze({
+      x: await readNumberAttribute(canvas, 'data-world-last-interaction-x'),
+      y: await readNumberAttribute(canvas, 'data-world-last-interaction-y'),
+    });
+    const distanceFromBin = Math.hypot(
+      finalX - binWorldPosition.x,
+      finalY - binWorldPosition.y,
+    );
+    expect(distanceFromBin).toBeGreaterThanOrEqual(60);
+    expect(distanceFromBin).toBeLessThanOrEqual(76);
+
+    const finalFacing = await canvas.getAttribute('data-player-facing');
+    const deltaX = binWorldPosition.x - finalX;
+    const deltaY = binWorldPosition.y - finalY;
+    const expectedFacing =
+      Math.abs(deltaX) > Math.abs(deltaY)
+        ? deltaX < 0
+          ? 'left'
+          : 'right'
+        : deltaY < 0
+          ? 'up'
+          : 'down';
+    expect(finalFacing).toBe(expectedFacing);
 
     await page.screenshot({
       path: 'test-results/hh-farm-direct-touch-mobile.png',

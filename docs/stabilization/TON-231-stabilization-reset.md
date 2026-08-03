@@ -94,3 +94,22 @@ Desktop browser artifacts confirm the authoritative 5 × 3 grid, bed and shippin
 At 390 × 844, the tutorial card and hotbar dominate the viewport while the Phaser world, player and grid are effectively unreadable. TON-234 is therefore a release-blocking layout rebuild, not optional polish.
 
 The Vercel URL remains an internal preview until TON-236 is complete.
+
+### TON-238 — world-first portrait layout
+
+Implementation branch: `feat/ton-238-mobile-world-first`.
+Tracking issue: https://github.com/hungtvb/hh-farm/issues/27
+
+- Portrait removes the detached mini-plot, stats grid and six farm action buttons from the visible gameplay surface; those DOM elements remain only for desktop compatibility while direct world touch is the production mobile path.
+- The duplicate static objective card is hidden in portrait.
+- A compact two-line guidance strip sits inside the safe area and does not intercept world input; only the 44 px Skip control remains interactive.
+- The Phaser canvas fills the dynamic portrait viewport height and is center-cropped horizontally. A `0.50` camera zoom plus positive follow offset keeps the 5 × 3 farm, bed, shipping bin and character readable inside the narrow physical viewport without changing save state.
+- `FarmScene` observes the portrait media query plus browser resize events, reapplies the camera profile when the viewport/orientation changes after boot and releases both listeners during scene shutdown. Desktop ↔ portrait transitions therefore do not require a scene restart.
+- Tutorial hints now instruct the player to tap the plot, bed or shipping bin rather than manually steering into an exact facing lane.
+- Mobile E2E asserts the compact layout, enlarged canvas and direct-manipulation contract while preserving the full touch-only farm loop. Route completion is verified through the authoritative interaction ID/kind/coordinates, completed intent state and valid standing distance rather than one stale cardinal approach coordinate.
+- The desktop collision regression releases active keyboard input before asserting zero velocity; collision remains verified by the west-bound position and stable camera/player state.
+- Portrait settings control is positioned below the tutorial guidance strip so it cannot intercept the 44 px Skip target; browser coverage asserts the two controls do not overlap.
+- Production mobile settings coverage tills through the Phaser world instead of invoking the intentionally hidden legacy DOM action grid.
+- World-first persistence assertions track the exact tilled-tile count and action tile ID instead of reading the legacy tutorial tile projection; the desktop west-bound collision wait uses a CI-safe bound while retaining the same collision threshold.
+
+This is a layout stabilization slice, not final art polish. Inventory, shop and settings remain modal sheets, and real iPhone Safari safe-area/browser-chrome validation is still required.

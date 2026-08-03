@@ -34,7 +34,10 @@ async function expectInsideViewport(
   expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight + 1);
 }
 
-async function expectHudReady(page: Page): Promise<Locator> {
+async function expectHudReady(
+  page: Page,
+  expectedSelectedSlot: string,
+): Promise<Locator> {
   const hud = page.locator('.game-hud[data-ready="true"]');
   await expect(hud).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#app')).toHaveAttribute(
@@ -49,7 +52,10 @@ async function expectHudReady(page: Page): Promise<Locator> {
 
   const slots = page.locator('.hh-hotbar-slot');
   await expect(slots).toHaveCount(8);
-  await expect(hud).toHaveAttribute('data-selected-slot', '1');
+  await expect(hud).toHaveAttribute(
+    'data-selected-slot',
+    expectedSelectedSlot,
+  );
 
   const allImagesLoaded = await page.locator('.game-hud img').evaluateAll(
     (images) =>
@@ -72,7 +78,7 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
 
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
-  const hud = await expectHudReady(page);
+  const hud = await expectHudReady(page, '1');
 
   await page.locator('.hh-hotbar-slot[data-slot="2"]').click();
   await expect(hud).toHaveAttribute('data-selected-slot', '2');
@@ -90,9 +96,22 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectHudReady(page);
+  await expectHudReady(page, '3');
   await expectInsideViewport(page.locator('.hh-topbar'), 390, 844);
   await expectInsideViewport(page.locator('.hh-hotbar'), 390, 844);
+
+  const canvasBox = await page.locator('canvas[data-scene="farm"]').boundingBox();
+  const promptBox = await page.locator('.hh-action-prompt').boundingBox();
+  expect(canvasBox).not.toBeNull();
+  expect(promptBox).not.toBeNull();
+
+  if (canvasBox !== null && promptBox !== null) {
+    expect(canvasBox.y).toBeLessThan(110);
+    expect(promptBox.y).toBeGreaterThanOrEqual(
+      canvasBox.y + canvasBox.height + 8,
+    );
+  }
+
   await page.screenshot({
     path: 'test-results/hh-farm-ui-mobile.png',
     fullPage: true,

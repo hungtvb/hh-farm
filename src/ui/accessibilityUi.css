@@ -1,0 +1,45 @@
+.hh-farm-loop__action,
+.hh-farm-loop__skip,
+.hh-inventory-toggle,
+.hh-shop-toggle,
+.hh-shop-modal__close,
+.hh-inventory-modal__close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.hh-farm-loop__actions {
+  gap: 8px;
+}
+
+.hh-farm-loop__water {
+  width: 14px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 70% 30% 65% 35%;
+  background: linear-gradient(145deg, #d8f6ff 8%, #59bce7 72%);
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 58%),
+    0 2px 0 rgb(255 255 255 / 80%);
+  color: transparent;
+  font-size: 0;
+  filter: none;
+  transform: rotate(38deg);
+}
+
+.hh-farm-loop__action:focus-visible,
+.hh-farm-loop__skip:focus-visible,
+.hh-inventory-toggle:focus-visible,
+.hh-shop-toggle:focus-visible,
+.hh-shop-modal__close:focus-visible,
+.hh-inventory-modal__close:focus-visible {
+  outline: 3px solid var(--hh-sun, #ffd46b);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .hh-farm-loop__action {
+    min-height: 44px;
+    padding-block: 7px;
+  }
+}

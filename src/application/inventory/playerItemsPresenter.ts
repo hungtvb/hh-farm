@@ -31,15 +31,24 @@ export type PlayerItemsViewModel = Readonly<{
   selectedItem: ItemSlotViewModel | null;
 }>;
 
+export type ItemLabelResolver = (
+  itemId: string,
+  sourceName: string,
+) => string;
+
+const keepSourceItemLabel: ItemLabelResolver = (_itemId, sourceName) =>
+  sourceName;
+
 function toItemView(
   slot: Exclude<InventorySlot, null>,
   catalog: ContentCatalog,
+  resolveLabel: ItemLabelResolver,
 ): ItemSlotViewModel {
   const item = catalog.requireItem(slot.itemId);
 
   return Object.freeze({
     itemId: item.id,
-    displayName: item.displayName,
+    displayName: resolveLabel(item.id, item.displayName),
     category: item.category,
     spriteKey: item.spriteKey,
     quantity: slot.quantity,
@@ -51,12 +60,13 @@ function toToolbarItemView(
   itemId: string,
   state: PlayerItemsState,
   catalog: ContentCatalog,
+  resolveLabel: ItemLabelResolver,
 ): ItemSlotViewModel {
   const item = catalog.requireItem(itemId);
 
   return Object.freeze({
     itemId: item.id,
-    displayName: item.displayName,
+    displayName: resolveLabel(item.id, item.displayName),
     category: item.category,
     spriteKey: item.spriteKey,
     quantity: countInventoryItem(state.inventory, item.id),
@@ -67,12 +77,14 @@ function toToolbarItemView(
 export function presentPlayerItems(
   state: PlayerItemsState,
   catalog: ContentCatalog,
+  resolveLabel: ItemLabelResolver = keepSourceItemLabel,
 ): PlayerItemsViewModel {
   const inventorySlots = Object.freeze(
     state.inventory.slots.map((slot, slotIndex) =>
       Object.freeze({
         slotIndex,
-        item: slot === null ? null : toItemView(slot, catalog),
+        item:
+          slot === null ? null : toItemView(slot, catalog, resolveLabel),
       }),
     ),
   );
@@ -84,7 +96,7 @@ export function presentPlayerItems(
         item:
           itemId === null
             ? null
-            : toToolbarItemView(itemId, state, catalog),
+            : toToolbarItemView(itemId, state, catalog, resolveLabel),
       }),
     ),
   );

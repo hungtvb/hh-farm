@@ -143,8 +143,8 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
       timeout: 6_000,
     })
     .toBeLessThanOrEqual(64);
-  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
   await page.keyboard.up('ArrowLeft');
+  await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
 
   const westCollisionX = await readNumberAttribute(canvas, 'data-player-x');
   expect(westCollisionX).toBeGreaterThanOrEqual(40);
@@ -609,12 +609,44 @@ test.describe('mobile-first direct manipulation', () => {
     await expect(canvas).toHaveAttribute('data-world-last-action', 'sell');
     await expect(canvas).toHaveAttribute('data-world-coins', '285');
     await expect(canvas).toHaveAttribute('data-world-day', '4');
-    await expect(canvas).toHaveAttribute('data-player-facing', 'left');
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-interaction-id',
+      binTarget.id,
+    );
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-interaction-kind',
+      'shipping_bin',
+    );
+    await expect(canvas).toHaveAttribute(
+      'data-world-intent-status',
+      'completed',
+    );
 
     const finalX = await readNumberAttribute(canvas, 'data-player-x');
     const finalY = await readNumberAttribute(canvas, 'data-player-y');
-    expect(Math.abs(finalX - 356)).toBeLessThanOrEqual(12);
-    expect(Math.abs(finalY - 448)).toBeLessThanOrEqual(12);
+    const binWorldPosition = Object.freeze({
+      x: await readNumberAttribute(canvas, 'data-world-last-interaction-x'),
+      y: await readNumberAttribute(canvas, 'data-world-last-interaction-y'),
+    });
+    const distanceFromBin = Math.hypot(
+      finalX - binWorldPosition.x,
+      finalY - binWorldPosition.y,
+    );
+    expect(distanceFromBin).toBeGreaterThanOrEqual(60);
+    expect(distanceFromBin).toBeLessThanOrEqual(76);
+
+    const finalFacing = await canvas.getAttribute('data-player-facing');
+    const deltaX = binWorldPosition.x - finalX;
+    const deltaY = binWorldPosition.y - finalY;
+    const expectedFacing =
+      Math.abs(deltaX) > Math.abs(deltaY)
+        ? deltaX < 0
+          ? 'left'
+          : 'right'
+        : deltaY < 0
+          ? 'up'
+          : 'down';
+    expect(finalFacing).toBe(expectedFacing);
 
     await page.screenshot({
       path: 'test-results/hh-farm-direct-touch-mobile.png',

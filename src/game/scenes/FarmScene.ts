@@ -115,6 +115,7 @@ function readableAction(action: FarmLoopTutorialAction): string {
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
   private farmRuntime: FarmGameRuntime | undefined;
+  private portraitWorldMediaQuery: MediaQueryList | undefined;
   private actionKeys: Phaser.Input.Keyboard.Key[] = [];
   private readonly farmTileVisuals = new Map<string, FarmTileVisual>();
   private readonly worldObjectVisuals = new Map<string, WorldObjectVisual>();
@@ -128,6 +129,10 @@ export class FarmScene extends Phaser.Scene {
     if (!this.actionPending && this.directIntent === undefined) {
       void this.performRecommendedAction();
     }
+  };
+
+  private readonly handleViewportProfileChange = (): void => {
+    this.applyCameraProfile();
   };
 
   public constructor() {
@@ -205,19 +210,46 @@ export class FarmScene extends Phaser.Scene {
     this.writePhysicsDebugState();
 
     const camera = this.cameras.main;
-    const portraitWorldFirst = window.matchMedia(PORTRAIT_WORLD_QUERY).matches;
-    const cameraZoom = portraitWorldFirst ? PORTRAIT_CAMERA_ZOOM : 1;
-    const followOffsetY = portraitWorldFirst
-      ? PORTRAIT_CAMERA_FOLLOW_OFFSET_Y
-      : 0;
     camera.roundPixels = true;
-    camera.setZoom(cameraZoom);
     camera.centerOn(
       this.playerController.sprite.x,
       this.playerController.sprite.y,
     );
+    this.portraitWorldMediaQuery = window.matchMedia(PORTRAIT_WORLD_QUERY);
+    this.portraitWorldMediaQuery.addEventListener(
+      'change',
+      this.handleViewportProfileChange,
+    );
+    window.addEventListener('resize', this.handleViewportProfileChange);
+    this.applyCameraProfile();
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
+  }
+
+  public update(_time: number, delta: number): void {
+    this.playerController?.update(delta);
+    this.renderFarmState(false);
+    this.updateTargetFeedback();
+  }
+
+  private applyCameraProfile(): void {
+    const player = this.playerController;
+    if (player === undefined) {
+      return;
+    }
+
+    const portraitWorldFirst =
+      this.portraitWorldMediaQuery?.matches ??
+      window.matchMedia(PORTRAIT_WORLD_QUERY).matches;
+    const cameraZoom = portraitWorldFirst ? PORTRAIT_CAMERA_ZOOM : 1;
+    const followOffsetY = portraitWorldFirst
+      ? PORTRAIT_CAMERA_FOLLOW_OFFSET_Y
+      : 0;
+    const camera = this.cameras.main;
+
+    camera.setZoom(cameraZoom);
     camera.startFollow(
-      this.playerController.sprite,
+      player.sprite,
       true,
       1,
       1,
@@ -228,14 +260,6 @@ export class FarmScene extends Phaser.Scene {
       ? 'portrait-world-first'
       : 'desktop';
     this.game.canvas.dataset.cameraZoom = cameraZoom.toFixed(2);
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown);
-  }
-
-  public update(_time: number, delta: number): void {
-    this.playerController?.update(delta);
-    this.renderFarmState(false);
-    this.updateTargetFeedback();
   }
 
   private createAuthoritativeFarmGrid(
@@ -778,6 +802,8 @@ export class FarmScene extends Phaser.Scene {
     canvas.dataset.worldLastAction = action;
     canvas.dataset.worldLastInteractionId = target.id;
     canvas.dataset.worldLastInteractionKind = target.kind;
+    canvas.dataset.worldLastInteractionX = target.x.toFixed(2);
+    canvas.dataset.worldLastInteractionY = target.y.toFixed(2);
     if (action === 'sell') {
       delete canvas.dataset.worldLastActionTileId;
     } else {
@@ -801,6 +827,12 @@ export class FarmScene extends Phaser.Scene {
     this.playerController?.destroy();
     this.playerController = undefined;
     this.farmRuntime = undefined;
+    this.portraitWorldMediaQuery?.removeEventListener(
+      'change',
+      this.handleViewportProfileChange,
+    );
+    this.portraitWorldMediaQuery = undefined;
+    window.removeEventListener('resize', this.handleViewportProfileChange);
     for (const key of this.actionKeys) {
       key.off('down', this.handleActionInput);
     }

@@ -146,5 +146,9 @@ test('renders the cozy HUD and hotbar on desktop and mobile', async ({
     fullPage: true,
   });
 
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(canvas).toHaveAttribute('data-camera-profile', 'desktop');
+  await expect(canvas).toHaveAttribute('data-camera-zoom', '1.00');
+
   expect(runtimeErrors).toEqual([]);
 });

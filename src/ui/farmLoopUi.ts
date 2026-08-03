@@ -82,6 +82,22 @@ function progressionFeedback(
     : translate('progress.unlock.strawberry');
 }
 
+function failureFeedback(
+  result: Exclude<FarmLoopResult, { status: 'completed' }>,
+  translate: Translator,
+): string {
+  if (result.code === 'save_failed') {
+    const separatorIndex = result.message.indexOf(':');
+    const detail =
+      separatorIndex === -1
+        ? result.message
+        : result.message.slice(separatorIndex + 1).trim();
+    return translate('failure.save_failed', { detail });
+  }
+
+  return farmFailureCopy(translate, result.code, result.message);
+}
+
 export function mountFarmLoopUi(
   hudRoot: HTMLElement,
   actions: FarmLoopUiActions,
@@ -233,11 +249,7 @@ export function mountFarmLoopUi(
   const presentResult = (result: FarmLoopResult): void => {
     if (result.status !== 'completed') {
       feedback.dataset.kind = 'error';
-      feedback.textContent = farmFailureCopy(
-        translate,
-        result.code,
-        result.message,
-      );
+      feedback.textContent = failureFeedback(result, translate);
       root.dataset.lastResult = result.status;
       return;
     }

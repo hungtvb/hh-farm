@@ -10,6 +10,10 @@ import {
   type FarmTileState,
 } from '../../domain/farming/farmTileState';
 import {
+  createWorldInteractionIntent,
+  type WorldInteractionIntent,
+} from '../../domain/world/worldInteractionIntent';
+import {
   requiredInteractionKind,
   resolveWorldInteractionTarget,
   type WorldInteractionTarget,
@@ -17,7 +21,10 @@ import {
 import { VISUAL_TEXTURE_KEYS } from '../assets/visualAssets';
 import { createPlayerTextures } from '../player/createPlayerTextures';
 import { createPlayerCollisionWorld } from '../player/collisionWorld';
-import { PlayerController } from '../player/PlayerController';
+import {
+  PlayerController,
+  type PlayerAutoMoveCancelReason,
+} from '../player/PlayerController';
 import {
   FARM_GAME_RUNTIME_REGISTRY_KEY,
   requireFarmGameRuntime,
@@ -32,26 +39,38 @@ const ACTION_KEY_CODES = [
 const TILE_DISPLAY_SIZE = 58;
 const TILE_SPACING = 64;
 const CROP_STAGE_SIZE = 64;
+const FARM_TILE_HIT_AREA_SIZE = 72;
+const WORLD_OBJECT_HIT_AREA_SIZE = 84;
+const MAX_TAP_DISTANCE = 18;
+const MAX_TAP_DURATION_MS = 650;
 const BED_TARGET_ID = 'world:bed';
 const SHIPPING_BIN_TARGET_ID = 'world:shipping-bin';
-const BED_POSITION = Object.freeze({ x: 800, y: 448 });
-const SHIPPING_BIN_POSITION = Object.freeze({ x: 160, y: 448 });
+const BED_POSITION = Object.freeze({ x: 672, y: 448 });
+const SHIPPING_BIN_POSITION = Object.freeze({ x: 288, y: 448 });
 
 let farmSceneCreateCount = 0;
 let farmSceneShutdownCount = 0;
 
 type FarmTileVisual = Readonly<{
-  tileId: string;
+  target: WorldInteractionTarget;
   position: Phaser.Math.Vector2;
   soil: Phaser.GameObjects.Image;
   crop: Phaser.GameObjects.Image;
   selection: Phaser.GameObjects.Image;
+  hitArea: Phaser.GameObjects.Zone;
 }>;
 
 type WorldObjectVisual = Readonly<{
   target: WorldInteractionTarget;
   image: Phaser.GameObjects.Image;
   selection: Phaser.GameObjects.Image;
+  hitArea: Phaser.GameObjects.Zone;
+}>;
+
+type PendingDirectIntent = Readonly<{
+  token: number;
+  intent: WorldInteractionIntent;
+  domainTileId: string;
 }>;
 
 function recommendedAction(
@@ -86,6 +105,10 @@ function guidedCropTileId(state: FarmLoopState): string | undefined {
   return cropTiles.length === 1 ? cropTiles[0]?.id : undefined;
 }
 
+function readableAction(action: FarmLoopTutorialAction): string {
+  return action.replace('_', ' ').toUpperCase();
+}
+
 export class FarmScene extends Phaser.Scene {
   private playerController: PlayerController | undefined;
   private farmRuntime: FarmGameRuntime | undefined;
@@ -94,10 +117,12 @@ export class FarmScene extends Phaser.Scene {
   private readonly worldObjectVisuals = new Map<string, WorldObjectVisual>();
   private actionHint: Phaser.GameObjects.Text | undefined;
   private lastRenderedState: FarmLoopState | undefined;
+  private directIntent: PendingDirectIntent | undefined;
+  private directIntentToken = 0;
   private actionPending = false;
 
   private readonly handleActionInput = (): void => {
-    if (!this.actionPending) {
+    if (!this.actionPending && this.directIntent === undefined) {
       void this.performRecommendedAction();
     }
   };
@@ -113,7 +138,7 @@ export class FarmScene extends Phaser.Scene {
     const mapSummary = [
       `${String(map.width)}×${String(map.height)} tiles`,
       `${String(metadata.collisions.length)} collision regions`,
-      'Arrow keys / WASD · E or Space to act · R to restart',
+      'Tap/click targets · Arrow keys / WASD optional · E or Space fallback · R to restart',
     ].join(' · ');
 
     this.game.canvas.dataset.scene = this.scene.key;
@@ -123,6 +148,8 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.sceneInstance = String(farmSceneCreateCount);
     this.game.canvas.dataset.sceneShutdownCount = String(farmSceneShutdownCount);
     this.game.canvas.dataset.mapSummary = mapSummary;
+    this.game.canvas.dataset.worldInputMode = 'direct-manipulation';
+    this.game.canvas.dataset.worldIntentStatus = 'idle';
 
     const diagnosticsEnabled = new URLSearchParams(window.location.search).has(
       'world-debug',
@@ -199,6 +226,12 @@ export class FarmScene extends Phaser.Scene {
         tutorialTilePosition.x + definition.x * TILE_SPACING,
         tutorialTilePosition.y + definition.y * TILE_SPACING,
       );
+      const target = Object.freeze({
+        id: definition.id,
+        kind: 'farm_tile' as const,
+        x: position.x,
+        y: position.y,
+      });
       const soil = this.add
         .image(position.x, position.y, VISUAL_TEXTURE_KEYS.soilUntilled)
         .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
@@ -214,15 +247,21 @@ export class FarmScene extends Phaser.Scene {
         .setDisplaySize(62, 62)
         .setAlpha(0.16)
         .setDepth(position.y + 2);
+      const hitArea = this.createTargetHitArea(
+        target,
+        position.y,
+        FARM_TILE_HIT_AREA_SIZE,
+      );
 
       this.farmTileVisuals.set(
         definition.id,
         Object.freeze({
-          tileId: definition.id,
+          target,
           position,
           soil,
           crop,
           selection,
+          hitArea,
         }),
       );
     }
@@ -232,7 +271,7 @@ export class FarmScene extends Phaser.Scene {
         color: '#1f3b28',
         backgroundColor: '#fff8dc',
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '16px',
+        fontSize: '14px',
         fontStyle: 'bold',
         padding: { x: 8, y: 4 },
       })
@@ -290,10 +329,178 @@ export class FarmScene extends Phaser.Scene {
       .setDisplaySize(70, 70)
       .setAlpha(0.16)
       .setDepth(target.y + 2);
+    const hitArea = this.createTargetHitArea(
+      target,
+      target.y - 32,
+      WORLD_OBJECT_HIT_AREA_SIZE,
+    );
     this.worldObjectVisuals.set(
       target.id,
-      Object.freeze({ target, image, selection }),
+      Object.freeze({ target, image, selection, hitArea }),
     );
+  }
+
+  private createTargetHitArea(
+    target: WorldInteractionTarget,
+    centerY: number,
+    size: number,
+  ): Phaser.GameObjects.Zone {
+    const hitArea = this.add
+      .zone(target.x, centerY, size, size)
+      .setDepth(20_000)
+      .setInteractive({ useHandCursor: true });
+    hitArea.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      this.handleTargetPointerUp(pointer, target);
+    });
+    return hitArea;
+  }
+
+  private handleTargetPointerUp(
+    pointer: Phaser.Input.Pointer,
+    target: WorldInteractionTarget,
+  ): void {
+    const canvas = this.game.canvas;
+    if (
+      pointer.id > 1 ||
+      pointer.button !== 0 ||
+      pointer.getDistance() > MAX_TAP_DISTANCE ||
+      pointer.getDuration() > MAX_TAP_DURATION_MS
+    ) {
+      canvas.dataset.worldTapResult = 'ignored';
+      return;
+    }
+
+    canvas.dataset.worldTapPointerId = String(pointer.id);
+    canvas.dataset.worldTapTargetId = target.id;
+    canvas.dataset.worldTapTargetKind = target.kind;
+    void this.queueDirectInteraction(target);
+  }
+
+  private queueDirectInteraction(target: WorldInteractionTarget): void {
+    const runtime = this.farmRuntime;
+    const player = this.playerController;
+    if (runtime === undefined || player === undefined || this.actionPending) {
+      return;
+    }
+
+    const state = runtime.getState();
+    const action = recommendedAction(state.tutorial.step);
+    if (
+      action === undefined ||
+      requiredInteractionKind(action) !== target.kind
+    ) {
+      player.cancelAutoMove('replaced');
+      const canvas = this.game.canvas;
+      canvas.dataset.worldTapResult = 'rejected';
+      canvas.dataset.worldTapFailure = 'wrong_target_for_step';
+      canvas.dataset.worldIntentStatus = 'idle';
+      return;
+    }
+
+    const domainTileId = this.domainTileIdForAction(action, target, state);
+    if (domainTileId === undefined) {
+      const canvas = this.game.canvas;
+      canvas.dataset.worldTapResult = 'rejected';
+      canvas.dataset.worldTapFailure = 'missing_domain_target';
+      canvas.dataset.worldIntentStatus = 'idle';
+      return;
+    }
+
+    const intent = createWorldInteractionIntent(
+      {
+        x: player.sprite.x,
+        y: player.sprite.y,
+        facing: player.getFacingDirection(),
+      },
+      target,
+      action,
+    );
+    const token = (this.directIntentToken += 1);
+    this.directIntent = Object.freeze({ token, intent, domainTileId });
+
+    const canvas = this.game.canvas;
+    canvas.dataset.worldTapResult = 'accepted';
+    delete canvas.dataset.worldTapFailure;
+    delete canvas.dataset.worldIntentCancelReason;
+    canvas.dataset.worldIntentStatus = 'walking';
+    canvas.dataset.worldIntentTargetId = target.id;
+    canvas.dataset.worldIntentAction = action;
+    canvas.dataset.worldIntentApproachX = intent.approach.x.toFixed(2);
+    canvas.dataset.worldIntentApproachY = intent.approach.y.toFixed(2);
+
+    player.moveTo({
+      x: intent.approach.x,
+      y: intent.approach.y,
+      facingOnArrival: intent.approach.facing,
+      onArrive: () => {
+        void this.completeDirectInteraction(token);
+      },
+      onCancel: (reason) => {
+        this.handleDirectInteractionCancelled(token, reason);
+      },
+    });
+    this.updateTargetFeedback();
+  }
+
+  private async completeDirectInteraction(token: number): Promise<void> {
+    const pending = this.directIntent;
+    const player = this.playerController;
+    if (
+      pending === undefined ||
+      pending.token !== token ||
+      player === undefined ||
+      this.actionPending
+    ) {
+      return;
+    }
+
+    this.actionPending = true;
+    const canvas = this.game.canvas;
+    canvas.dataset.worldActionPending = 'true';
+    canvas.dataset.worldIntentStatus = 'acting';
+    player.setFacingDirection(pending.intent.approach.facing);
+
+    try {
+      await player.playActionAnimation();
+      await this.commitAction(
+        pending.intent.action,
+        pending.intent.target,
+        pending.domainTileId,
+      );
+      canvas.dataset.worldIntentStatus = 'completed';
+    } finally {
+      if (this.directIntent?.token === token) {
+        this.directIntent = undefined;
+      }
+      this.actionPending = false;
+      canvas.dataset.worldActionPending = 'false';
+      this.clearIntentDataset();
+      this.updateTargetFeedback();
+    }
+  }
+
+  private handleDirectInteractionCancelled(
+    token: number,
+    reason: PlayerAutoMoveCancelReason,
+  ): void {
+    if (this.directIntent?.token !== token) {
+      return;
+    }
+
+    this.directIntent = undefined;
+    const canvas = this.game.canvas;
+    canvas.dataset.worldIntentStatus = 'cancelled';
+    canvas.dataset.worldIntentCancelReason = reason;
+    this.clearIntentDataset();
+    this.updateTargetFeedback();
+  }
+
+  private clearIntentDataset(): void {
+    const canvas = this.game.canvas;
+    delete canvas.dataset.worldIntentTargetId;
+    delete canvas.dataset.worldIntentAction;
+    delete canvas.dataset.worldIntentApproachX;
+    delete canvas.dataset.worldIntentApproachY;
   }
 
   private drawWorldDiagnostics(
@@ -385,13 +592,8 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private interactionTargets(): readonly WorldInteractionTarget[] {
-    const farmTargets = [...this.farmTileVisuals.values()].map((visual) =>
-      Object.freeze({
-        id: visual.tileId,
-        kind: 'farm_tile' as const,
-        x: visual.position.x,
-        y: visual.position.y,
-      }),
+    const farmTargets = [...this.farmTileVisuals.values()].map(
+      (visual) => visual.target,
     );
     const objectTargets = [...this.worldObjectVisuals.values()].map(
       (visual) => visual.target,
@@ -400,6 +602,10 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private resolveCurrentTarget(): WorldInteractionTarget | undefined {
+    if (this.directIntent !== undefined) {
+      return this.directIntent.intent.target;
+    }
+
     const player = this.playerController;
     if (player === undefined) {
       return undefined;
@@ -418,7 +624,7 @@ export class FarmScene extends Phaser.Scene {
   private updateTargetFeedback(): void {
     const target = this.resolveCurrentTarget();
     for (const visual of this.farmTileVisuals.values()) {
-      visual.selection.setAlpha(visual.tileId === target?.id ? 0.98 : 0.16);
+      visual.selection.setAlpha(visual.target.id === target?.id ? 0.98 : 0.16);
     }
     for (const visual of this.worldObjectVisuals.values()) {
       visual.selection.setAlpha(visual.target.id === target?.id ? 0.98 : 0.16);
@@ -427,11 +633,21 @@ export class FarmScene extends Phaser.Scene {
     const action = recommendedAction(
       this.farmRuntime?.getState().tutorial.step ?? 'completed',
     );
+    const directWalking =
+      this.directIntent !== undefined &&
+      (this.playerController?.isAutoMoving() ?? false);
     const actionReady =
+      !this.actionPending &&
+      !directWalking &&
       action !== undefined &&
       target !== undefined &&
       requiredInteractionKind(action) === target.kind;
     this.actionHint?.setVisible(actionReady);
+    if (action !== undefined) {
+      this.actionHint?.setText(
+        this.directIntent === undefined ? 'E' : readableAction(action),
+      );
+    }
     if (target !== undefined) {
       const hintOffset = target.kind === 'farm_tile' ? 46 : 78;
       this.actionHint
@@ -520,28 +736,42 @@ export class FarmScene extends Phaser.Scene {
     this.actionPending = true;
     this.game.canvas.dataset.worldActionPending = 'true';
     try {
-      const result = await runtime.perform(action, domainTileId);
-      const canvas = this.game.canvas;
-      canvas.dataset.worldLastAction = action;
-      canvas.dataset.worldLastInteractionId = target.id;
-      canvas.dataset.worldLastInteractionKind = target.kind;
-      if (action === 'sell') {
-        delete canvas.dataset.worldLastActionTileId;
-      } else {
-        canvas.dataset.worldLastActionTileId = domainTileId;
-      }
-      canvas.dataset.worldLastResult = result.status;
-      if ('code' in result) {
-        canvas.dataset.worldLastFailure = result.code;
-      } else {
-        delete canvas.dataset.worldLastFailure;
-      }
-      this.renderFarmState(true);
-      this.updateTargetFeedback();
+      await this.playerController?.playActionAnimation();
+      await this.commitAction(action, target, domainTileId);
     } finally {
       this.actionPending = false;
       this.game.canvas.dataset.worldActionPending = 'false';
     }
+  }
+
+  private async commitAction(
+    action: FarmLoopTutorialAction,
+    target: WorldInteractionTarget,
+    domainTileId: string,
+  ): Promise<void> {
+    const runtime = this.farmRuntime;
+    if (runtime === undefined) {
+      return;
+    }
+
+    const result = await runtime.perform(action, domainTileId);
+    const canvas = this.game.canvas;
+    canvas.dataset.worldLastAction = action;
+    canvas.dataset.worldLastInteractionId = target.id;
+    canvas.dataset.worldLastInteractionKind = target.kind;
+    if (action === 'sell') {
+      delete canvas.dataset.worldLastActionTileId;
+    } else {
+      canvas.dataset.worldLastActionTileId = domainTileId;
+    }
+    canvas.dataset.worldLastResult = result.status;
+    if ('code' in result) {
+      canvas.dataset.worldLastFailure = result.code;
+    } else {
+      delete canvas.dataset.worldLastFailure;
+    }
+    this.renderFarmState(true);
+    this.updateTargetFeedback();
   }
 
   private readonly handleShutdown = (): void => {
@@ -556,10 +786,18 @@ export class FarmScene extends Phaser.Scene {
       key.off('down', this.handleActionInput);
     }
     this.actionKeys = [];
+    for (const visual of this.farmTileVisuals.values()) {
+      visual.hitArea.removeAllListeners();
+    }
+    for (const visual of this.worldObjectVisuals.values()) {
+      visual.hitArea.removeAllListeners();
+    }
     this.farmTileVisuals.clear();
     this.worldObjectVisuals.clear();
     this.actionHint = undefined;
     this.lastRenderedState = undefined;
+    this.directIntent = undefined;
+    this.directIntentToken = 0;
     this.actionPending = false;
   };
 

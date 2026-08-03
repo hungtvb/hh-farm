@@ -278,14 +278,14 @@ async function moveToFarmTile(
 
 async function moveToBed(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 720);
+  await alignPlayerX(page, canvas, 592);
   await moveUntilTarget(page, canvas, 'ArrowRight', 'world:bed', 2_000);
   await expect(canvas).toHaveAttribute('data-world-target-kind', 'bed');
 }
 
 async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
   await alignPlayerY(page, canvas, 448);
-  await alignPlayerX(page, canvas, 240);
+  await alignPlayerX(page, canvas, 368);
   await moveUntilTarget(
     page,
     canvas,
@@ -447,4 +447,172 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
     'none',
   );
   expect(runtimeErrors).toEqual([]);
+});
+
+test.describe('mobile-first direct manipulation', () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  async function tapWorldPoint(
+    page: Page,
+    canvas: Locator,
+    worldX: number,
+    worldY: number,
+  ): Promise<void> {
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) {
+      return;
+    }
+
+    const cameraX = await readNumberAttribute(canvas, 'data-camera-x');
+    const cameraY = await readNumberAttribute(canvas, 'data-camera-y');
+    const screenX = worldX - cameraX;
+    const screenY = worldY - cameraY;
+
+    await page.touchscreen.tap(
+      box.x + (screenX / 640) * box.width,
+      box.y + (screenY / 360) * box.height,
+    );
+  }
+
+  async function tapTargetAndWaitForStep(
+    page: Page,
+    canvas: Locator,
+    worldX: number,
+    worldY: number,
+    targetId: string,
+    nextStep: string,
+  ): Promise<void> {
+    await tapWorldPoint(page, canvas, worldX, worldY);
+    await expect(canvas).toHaveAttribute('data-world-tap-result', 'accepted');
+    await expect(canvas).toHaveAttribute('data-world-tap-target-id', targetId);
+    await expect(canvas).toHaveAttribute(
+      'data-world-tutorial-step',
+      nextStep,
+      { timeout: 10_000 },
+    );
+    await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
+  }
+
+  test('completes the guided crop loop by tapping world targets', async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const runtimeErrors = collectRuntimeErrors(page);
+    const canvas = await openFarm(page);
+    const farmTarget = Object.freeze({
+      id: 'starter-plot:-1:0',
+      x: 416,
+      y: 352,
+    });
+    const bedTarget = Object.freeze({ id: 'world:bed', x: 672, y: 416 });
+    const binTarget = Object.freeze({
+      id: 'world:shipping-bin',
+      x: 288,
+      y: 416,
+    });
+
+    await expect(canvas).toHaveAttribute(
+      'data-world-input-mode',
+      'direct-manipulation',
+    );
+    await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'till');
+    await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
+
+    await tapTargetAndWaitForStep(
+      page,
+      canvas,
+      farmTarget.x,
+      farmTarget.y,
+      farmTarget.id,
+      'plant',
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'till');
+
+    await tapTargetAndWaitForStep(
+      page,
+      canvas,
+      farmTarget.x,
+      farmTarget.y,
+      farmTarget.id,
+      'water',
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'plant');
+
+    await tapTargetAndWaitForStep(
+      page,
+      canvas,
+      farmTarget.x,
+      farmTarget.y,
+      farmTarget.id,
+      'next_day',
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'water');
+
+    for (let day = 2; day <= 4; day += 1) {
+      await tapWorldPoint(page, canvas, bedTarget.x, bedTarget.y);
+      await expect(canvas).toHaveAttribute('data-world-tap-result', 'accepted');
+      await expect(canvas).toHaveAttribute(
+        'data-world-tap-target-id',
+        bedTarget.id,
+      );
+      await expect(canvas).toHaveAttribute('data-world-day', String(day), {
+        timeout: 10_000,
+      });
+      await expect(canvas).toHaveAttribute('data-world-last-action', 'next_day');
+      await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
+
+      if (day < 4) {
+        await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'water');
+        await tapTargetAndWaitForStep(
+          page,
+          canvas,
+          farmTarget.x,
+          farmTarget.y,
+          farmTarget.id,
+          'next_day',
+        );
+        await expect(canvas).toHaveAttribute('data-world-last-action', 'water');
+      }
+    }
+
+    await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'harvest');
+    await tapTargetAndWaitForStep(
+      page,
+      canvas,
+      farmTarget.x,
+      farmTarget.y,
+      farmTarget.id,
+      'sell',
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'harvest');
+
+    await tapTargetAndWaitForStep(
+      page,
+      canvas,
+      binTarget.x,
+      binTarget.y,
+      binTarget.id,
+      'completed',
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-action', 'sell');
+    await expect(canvas).toHaveAttribute('data-world-coins', '285');
+    await expect(canvas).toHaveAttribute('data-world-day', '4');
+    await expect(canvas).toHaveAttribute('data-player-facing', 'left');
+
+    const finalX = await readNumberAttribute(canvas, 'data-player-x');
+    const finalY = await readNumberAttribute(canvas, 'data-player-y');
+    expect(Math.abs(finalX - 356)).toBeLessThanOrEqual(12);
+    expect(Math.abs(finalY - 448)).toBeLessThanOrEqual(12);
+
+    await page.screenshot({
+      path: 'test-results/hh-farm-direct-touch-mobile.png',
+      fullPage: true,
+    });
+    expect(runtimeErrors).toEqual([]);
+  });
 });

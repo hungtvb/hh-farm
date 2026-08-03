@@ -12,6 +12,7 @@ export type GameHudController = Readonly<{
   root: HTMLElement;
   selectSlot: (slotIndex: number) => void;
   setDay: (day: number) => void;
+  markDayTransitionComplete: (eventCount: number) => void;
   destroy: () => void;
 }>;
 
@@ -132,6 +133,15 @@ export function mountGameHud(
     root.dataset.day = String(day);
   };
 
+  const markDayTransitionComplete = (eventCount: number): void => {
+    if (!Number.isInteger(eventCount) || eventCount < 1) {
+      throw new Error('Day transition event count must be a positive integer.');
+    }
+
+    root.dataset.dayTransitionEvents = String(eventCount);
+    root.dataset.dayTransitionStatus = 'complete';
+  };
+
   const brand = createElement('div', 'hh-brand');
   const brandEyebrow = createElement('span', 'hh-brand__eyebrow');
   brandEyebrow.textContent = 'NÔNG TRẠI';
@@ -242,6 +252,7 @@ export function mountGameHud(
     root,
     selectSlot,
     setDay,
+    markDayTransitionComplete,
     destroy: () => {
       window.removeEventListener('keydown', handleKeyboard);
       root.remove();

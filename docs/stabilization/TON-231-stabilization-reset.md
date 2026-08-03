@@ -13,7 +13,7 @@ HH Farm is an internal technical preview, not a release candidate.
 ## Delivery order
 
 1. TON-232 — integrate authoritative farm tiles, targeting, commands, rendering and save state into the world.
-2. TON-233 — add semantic touch movement and context action controls.
+2. TON-233 — implement direct touch/click targets with character auto-approach; manual movement is optional.
 3. TON-234 — rebuild portrait layout around a readable game world.
 4. TON-235 — remove debug prototypes and add in-world feedback.
 5. TON-236 — pass human desktop and real iPhone Safari playtests.
@@ -51,7 +51,7 @@ Merged commit `1a5fa0a2df7b75e39b5b4070773894760e7cf0c7` was verified by run `30
 
 ### Slice 3 — intentional bed and shipping-bin interactions
 
-Draft PR: https://github.com/hungtvb/hh-farm/pull/21
+Merged PR: https://github.com/hungtvb/hh-farm/pull/21
 
 - World interaction targets are typed as `farm_tile`, `bed` or `shipping_bin`.
 - A pure nearest-facing resolver enforces distance, facing lane and stable tie-breaking.
@@ -63,9 +63,29 @@ Draft PR: https://github.com/hungtvb/hh-farm/pull/21
 - Chromium physically travels farm → bed three times → farm → shipping bin, then reloads the completed state.
 - Browser navigation uses short movement samples so the test cannot skip across a valid target between polling frames.
 
-Verify run `30815768030` passed generated map/assets, typed content validation, TypeScript strict, lint, 151 unit tests, production bundle validation and all 14 Chromium browser tests.
+Verify run `30816186736` passed generated map/assets, typed content validation, TypeScript strict, lint, 151 unit tests, production bundle validation and all 14 Chromium browser tests. PR #21 merged as `9db95dc57e981d40d30295544577ab781c6dc2b6`.
 
 TON-232 remains open for one cleanup slice: remove the detached DOM action grid as the primary path while retaining compact guidance/status and compatibility coverage where necessary.
+
+## Mobile-first interaction decision — 2026-08-03
+
+Core farming uses direct manipulation: tap/click a farm tile or intentional world object, then the character automatically approaches a valid standing point, faces the target and performs the action. The character remains visible and animated to give the farm life, but precise manual steering is not required for routine farming.
+
+Manual keyboard movement remains a desktop accessibility/debug fallback and may remain available for exploration. A mandatory virtual joystick is not part of the chosen production scheme unless real-device evidence later proves it necessary.
+
+### TON-233 slice 1 — direct target intent and auto-approach
+
+Implementation branch: `feat/ton-233-direct-touch-auto-approach`.
+
+- Farm tiles, bed and shipping bin receive pointer/touch hit areas independent from their visual size.
+- Tap filtering rejects drags, long presses and secondary pointers.
+- A pure domain helper resolves the nearest cardinal approach point and facing direction.
+- A replacement tap cancels the prior route; manual keyboard movement also cancels auto movement.
+- The character walks under Arcade Physics, stops at an explicit threshold, faces the target, plays a short reduced-motion-aware action animation and only then commits the authoritative command.
+- Bed and shipping bin move closer to the starter farm so the entire guided loop stays within the practical mobile camera area.
+- The mobile browser flow covers till → plant → water → bed/day ×3 → harvest → shipping bin/sell using touch only.
+
+This slice intentionally still follows the guided tutorial action sequence. Generic post-tutorial context-action resolution, portrait layout cleanup and removal of the legacy DOM action panel remain separate gates.
 
 ## Visual evidence
 

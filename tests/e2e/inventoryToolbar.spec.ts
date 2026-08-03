@@ -66,12 +66,15 @@ test('opens inventory and binds catalog items with keyboard and pointer', async 
     '.hh-inventory-slot[data-item-id="seed.turnip"]',
   );
   await expect(turnipSeeds).toBeEnabled();
-  await expect(turnipSeeds).toHaveAttribute('aria-label', /Củ cải.*ô công cụ 6/);
+  await expect(turnipSeeds).toHaveAttribute(
+    'aria-label',
+    /Hạt củ cải.*ô công cụ 6/,
+  );
   await turnipSeeds.click();
 
   await expect(toolbarSlotSix).toHaveAttribute('data-item-id', 'seed.turnip');
   await expect(toolbarSlotSix.locator('.hh-hotbar-slot__label')).toHaveText(
-    'Củ cải',
+    'Hạt củ cải',
   );
   await expect(toolbarSlotSix.locator('.hh-item-quantity')).toHaveText('5');
   await expect(hud).toHaveAttribute('data-selected-slot', '6');
@@ -133,7 +136,7 @@ test.describe('touch inventory interaction', () => {
     );
     await expect(turnipSeeds).toHaveAttribute(
       'aria-label',
-      /Củ cải.*ô công cụ 8/,
+      /Hạt củ cải.*ô công cụ 8/,
     );
     await turnipSeeds.tap();
 
@@ -142,7 +145,7 @@ test.describe('touch inventory interaction', () => {
       'seed.turnip',
     );
     await expect(toolbarSlotEight.locator('.hh-hotbar-slot__label')).toHaveText(
-      'Củ cải',
+      'Hạt củ cải',
     );
     await expect(toolbarSlotEight.locator('.hh-item-quantity')).toHaveText('5');
     await expect(hud).toHaveAttribute('data-selected-slot', '8');

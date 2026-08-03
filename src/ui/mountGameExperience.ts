@@ -66,10 +66,7 @@ export function mountGameExperience(
     },
     {
       onSelectToolbarSlot: (slotIndex) => {
-        const result = selectToolbarSlot(
-          economy.playerItems,
-          slotIndex,
-        );
+        const result = selectToolbarSlot(economy.playerItems, slotIndex);
         if (result.ok) {
           economy = createEconomyState(economy.wallet, result.state);
           refresh();
@@ -102,9 +99,13 @@ export function mountGameExperience(
         return;
       }
 
+      const event = result.events[0];
+      if (event.type !== 'item-bought') {
+        throw new Error('Buy transaction returned a non-buy event.');
+      }
+
       economy = result.state;
       refresh();
-      const event = result.events[0];
       const item = gameContentCatalog.requireItem(event.itemId);
       shop.showFeedback(
         `Đã mua ${resolveVietnameseItemLabel(item.id, item.displayName)} · -${String(event.cost)} xu`,
@@ -121,9 +122,13 @@ export function mountGameExperience(
         return;
       }
 
+      const event = result.events[0];
+      if (event.type !== 'item-sold') {
+        throw new Error('Sell transaction returned a non-sell event.');
+      }
+
       economy = result.state;
       refresh();
-      const event = result.events[0];
       const item = gameContentCatalog.requireItem(event.itemId);
       shop.showFeedback(
         `Đã bán ${resolveVietnameseItemLabel(item.id, item.displayName)} · +${String(event.revenue)} xu`,

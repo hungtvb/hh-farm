@@ -15,14 +15,28 @@ function collectRuntimeErrors(page: Page): string[] {
   return runtimeErrors;
 }
 
-async function deleteFarmSave(page: Page): Promise<void> {
+async function clearFarmSave(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.deleteDatabase('hh-farm-loop-save');
-      request.onsuccess = () => resolve();
-      request.onerror = () =>
-        reject(request.error ?? new Error('Failed to delete farm save.'));
-      request.onblocked = () => resolve();
+      const openRequest = indexedDB.open('hh-farm-loop-save', 1);
+      openRequest.onerror = () =>
+        reject(openRequest.error ?? new Error('Failed to open farm save.'));
+      openRequest.onsuccess = () => {
+        const database = openRequest.result;
+        const transaction = database.transaction('save-slots', 'readwrite');
+        transaction.objectStore('save-slots').clear();
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        transaction.onerror = () => {
+          database.close();
+          reject(
+            transaction.error ?? new Error('Failed to clear farm save.'),
+          );
+        };
+        transaction.onabort = transaction.onerror;
+      };
     });
   });
 }
@@ -41,11 +55,16 @@ test.describe('@production-loop persistent settings and localization', () => {
     await page.goto('/');
 
     const html = page.locator('html');
+    const loop = page.locator('.hh-farm-loop');
     const settingsToggle = page.locator('.hh-settings-toggle');
     const settings = page.locator('.hh-settings-modal');
 
     await expect(settingsToggle).toBeVisible({ timeout: 10_000 });
     await expect(html).toHaveAttribute('lang', 'vi');
+    await page.locator('.hh-farm-loop__action[data-action="till"]').tap();
+    await expect(loop).toHaveAttribute('data-soil', 'tilled');
+    await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
+
     await settingsToggle.tap();
     await expect(settings).toBeVisible();
     await expect(settings).toHaveAttribute('data-load-status', 'default');
@@ -76,6 +95,9 @@ test.describe('@production-loop persistent settings and localization', () => {
     await expect(page.locator('.game-hud[data-ready="true"]')).toBeVisible({
       timeout: 10_000,
     });
+    await expect(loop).toHaveAttribute('data-load-status', 'loaded');
+    await expect(loop).toHaveAttribute('data-soil', 'tilled');
+    await expect(loop).toHaveAttribute('data-tutorial-step', 'plant');
     await expect(html).toHaveAttribute('lang', 'en');
     await expect(html).toHaveAttribute('data-language', 'en');
     await expect(html).toHaveAttribute('data-reduced-motion', 'true');
@@ -105,15 +127,14 @@ test.describe('@production-loop persistent settings and localization', () => {
       fullPage: true,
     });
 
-    await deleteFarmSave(page);
+    await clearFarmSave(page);
     await page.reload();
     await expect(page.locator('.game-hud[data-ready="true"]')).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.locator('.hh-farm-loop')).toHaveAttribute(
-      'data-load-status',
-      'empty',
-    );
+    await expect(loop).toHaveAttribute('data-load-status', 'empty');
+    await expect(loop).toHaveAttribute('data-soil', 'untilled');
+    await expect(loop).toHaveAttribute('data-tutorial-step', 'till');
     await expect(html).toHaveAttribute('lang', 'en');
     await expect(html).toHaveAttribute('data-reduced-motion', 'true');
     await expect(page.locator('.hh-shop-toggle')).toHaveText('Shop');

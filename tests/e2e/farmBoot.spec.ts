@@ -170,45 +170,35 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   expect(runtimeErrors).toEqual([]);
 });
 
+type MovementKey = 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'ArrowUp';
+
+async function tapMovementKey(
+  page: Page,
+  key: MovementKey,
+  durationMs = 45,
+): Promise<void> {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(durationMs);
+  await page.keyboard.up(key);
+  await page.waitForTimeout(10);
+}
+
 async function moveUntilTarget(
   page: Page,
   canvas: Locator,
-  key: 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'ArrowUp',
+  key: MovementKey,
   targetId: string,
   timeout = 6_000,
 ): Promise<void> {
-  await page.keyboard.down(key);
-  try {
-    await expect
-      .poll(() => canvas.getAttribute('data-world-target-id'), { timeout })
-      .toBe(targetId);
-  } finally {
-    await page.keyboard.up(key);
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if ((await canvas.getAttribute('data-world-target-id')) === targetId) {
+      return;
+    }
+    await tapMovementKey(page, key);
   }
-}
 
-async function moveUntilCoordinate(
-  page: Page,
-  canvas: Locator,
-  key: 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'ArrowUp',
-  attributeName: 'data-player-x' | 'data-player-y',
-  comparison: 'at_least' | 'at_most',
-  threshold: number,
-  timeout = 6_000,
-): Promise<void> {
-  await page.keyboard.down(key);
-  try {
-    await expect
-      .poll(async () => {
-        const value = await readNumberAttribute(canvas, attributeName);
-        return comparison === 'at_least'
-          ? value >= threshold
-          : value <= threshold;
-      }, { timeout })
-      .toBe(true);
-  } finally {
-    await page.keyboard.up(key);
-  }
+  await expect(canvas).toHaveAttribute('data-world-target-id', targetId);
 }
 
 async function alignPlayerCoordinate(
@@ -216,35 +206,26 @@ async function alignPlayerCoordinate(
   canvas: Locator,
   attributeName: 'data-player-x' | 'data-player-y',
   target: number,
-  negativeKey: 'ArrowLeft' | 'ArrowUp',
-  positiveKey: 'ArrowDown' | 'ArrowRight',
+  negativeKey: Extract<MovementKey, 'ArrowLeft' | 'ArrowUp'>,
+  positiveKey: Extract<MovementKey, 'ArrowDown' | 'ArrowRight'>,
   tolerance = 20,
 ): Promise<void> {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
     const current = await readNumberAttribute(canvas, attributeName);
-    if (Math.abs(current - target) <= tolerance) {
+    const delta = target - current;
+    if (Math.abs(delta) <= tolerance) {
       return;
     }
 
-    if (current > target) {
-      await moveUntilCoordinate(
-        page,
-        canvas,
-        negativeKey,
-        attributeName,
-        'at_most',
-        target + tolerance,
-      );
-    } else {
-      await moveUntilCoordinate(
-        page,
-        canvas,
-        positiveKey,
-        attributeName,
-        'at_least',
-        target - tolerance,
-      );
-    }
+    const durationMs = Math.min(
+      80,
+      Math.max(20, Math.round(((Math.abs(delta) - tolerance) / 150) * 1_000)),
+    );
+    await tapMovementKey(
+      page,
+      delta < 0 ? negativeKey : positiveKey,
+      durationMs,
+    );
   }
 
   const finalValue = await readNumberAttribute(canvas, attributeName);
@@ -321,6 +302,7 @@ async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
 test('completes the crop loop through farm, bed and shipping-bin targets', async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   const runtimeErrors = collectRuntimeErrors(page);
   const canvas = await openFarm(page);
   const targetTileId = 'starter-plot:-1:0';

@@ -1,6 +1,7 @@
 import './styles.css';
 import './ui/mobileLayout.css';
 import './ui/inventoryUi.css';
+import './ui/shopUi.css';
 import { exposeBuildInfo } from './build/buildInfo';
 import { mountGameExperience } from './ui/mountGameExperience';
 

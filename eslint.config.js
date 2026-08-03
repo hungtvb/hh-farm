@@ -35,6 +35,7 @@ export default tseslint.config(
     files: [
       'eslint.config.js',
       'scripts/generate-visual-assets.mjs',
+      'scripts/validate-art-pack-contract.mjs',
       'scripts/validate-visual-assets.mjs',
     ],
     extends: [tseslint.configs.disableTypeChecked],

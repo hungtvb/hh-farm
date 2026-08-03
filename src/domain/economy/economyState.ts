@@ -93,11 +93,11 @@ function success(
   state: EconomyState,
   event: EconomyTransactionEvent,
 ): EconomyTransactionSuccess {
-  return Object.freeze({
-    ok: true,
-    state,
-    events: Object.freeze([Object.freeze(event)]),
-  });
+  const events = Object.freeze([
+    Object.freeze(event),
+  ]) as readonly [EconomyTransactionEvent];
+
+  return Object.freeze({ ok: true, state, events });
 }
 
 function isPositiveSafeInteger(value: number): boolean {

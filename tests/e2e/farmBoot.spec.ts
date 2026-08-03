@@ -168,3 +168,73 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
 
   expect(runtimeErrors).toEqual([]);
 });
+
+test('completes the authoritative farm loop from the Phaser world', async ({
+  page,
+}) => {
+  const runtimeErrors = collectRuntimeErrors(page);
+  const canvas = await openFarm(page);
+
+  await expect(canvas).toHaveAttribute(
+    'data-visual-prototype',
+    'authoritative-tutorial-tile',
+  );
+  await expect(canvas).toHaveAttribute('data-world-soil', 'untilled');
+  await expect(canvas).toHaveAttribute('data-world-tutorial-step', 'till');
+
+  await page.keyboard.down('ArrowUp');
+  await expect
+    .poll(() => canvas.getAttribute('data-world-target-ready'), {
+      timeout: 2_000,
+    })
+    .toBe('true');
+  await page.keyboard.up('ArrowUp');
+
+  const act = async (
+    expectedStep: string,
+    expectedAction: string,
+  ): Promise<void> => {
+    await page.keyboard.press('KeyE');
+    await expect(canvas).toHaveAttribute(
+      'data-world-last-action',
+      expectedAction,
+    );
+    await expect(canvas).toHaveAttribute('data-world-last-result', 'completed');
+    await expect(canvas).toHaveAttribute(
+      'data-world-tutorial-step',
+      expectedStep,
+    );
+  };
+
+  await act('plant', 'till');
+  await expect(canvas).toHaveAttribute('data-world-soil', 'tilled');
+
+  await act('water', 'plant');
+  await expect(canvas).toHaveAttribute('data-world-crop-stage', '0');
+
+  for (let index = 0; index < 3; index += 1) {
+    await act('next_day', 'water');
+    await expect(canvas).toHaveAttribute('data-world-watered', 'true');
+
+    await act(index === 2 ? 'harvest' : 'water', 'next_day');
+    await expect(canvas).toHaveAttribute('data-world-day', String(index + 2));
+    await expect(canvas).toHaveAttribute('data-world-watered', 'false');
+  }
+
+  await expect(canvas).toHaveAttribute('data-world-crop-stage', '3');
+  await act('sell', 'harvest');
+  await expect(canvas).toHaveAttribute('data-world-crop-stage', 'none');
+
+  await act('completed', 'sell');
+  await expect(canvas).toHaveAttribute('data-world-coins', '285');
+
+  await page.reload();
+  const restoredCanvas = await openFarm(page);
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-world-tutorial-step',
+    'completed',
+  );
+  await expect(restoredCanvas).toHaveAttribute('data-world-day', '4');
+  await expect(restoredCanvas).toHaveAttribute('data-world-coins', '285');
+  expect(runtimeErrors).toEqual([]);
+});

@@ -28,6 +28,7 @@ import {
   type SettingsStorage,
 } from '../application/settings/settingsRepository.js';
 import { buildInfo } from '../build/buildInfo.js';
+import type { FarmGameRuntime } from '../game/runtime/farmGameRuntime.js';
 import { gameContentCatalog } from '../data/content/index.js';
 import {
   buyShopOffer,
@@ -72,6 +73,7 @@ type UiReferences = {
 
 export type GameExperienceController = Readonly<{
   hud: GameHudController;
+  farmRuntime: FarmGameRuntime;
   getFarmLoopState: () => FarmLoopState;
   getPlayerItemsState: () => PlayerItemsState;
 }>;
@@ -453,8 +455,15 @@ export async function mountGameExperience(
   ui.farmLoop.presentLoadStatus(loadResult.status, loadMessage, migrated);
   ui.settings.presentLoadStatus(settingsLoad);
 
+  const farmRuntime: FarmGameRuntime = Object.freeze({
+    getState: () => coordinator.getState(),
+    perform: (action, targetTileId) =>
+      coordinator.perform(action, targetTileId),
+  });
+
   return Object.freeze({
     hud,
+    farmRuntime,
     getFarmLoopState: () => coordinator.getState(),
     getPlayerItemsState: () => coordinator.getState().economy.playerItems,
   });

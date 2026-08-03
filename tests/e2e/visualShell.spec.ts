@@ -47,8 +47,11 @@ async function expectHudReady(
 
   const canvas = page.locator('canvas[data-scene="farm"]');
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveAttribute('data-visual-asset-count', '4');
-  await expect(canvas).toHaveAttribute('data-visual-prototype', 'soil-states');
+  await expect(canvas).toHaveAttribute('data-visual-asset-count', '3');
+  await expect(canvas).toHaveAttribute(
+    'data-visual-prototype',
+    'authoritative-tutorial-tile',
+  );
 
   const slots = page.locator('.hh-hotbar-slot');
   await expect(slots).toHaveCount(8);

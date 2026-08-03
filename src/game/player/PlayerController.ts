@@ -93,6 +93,10 @@ export class PlayerController {
     this.writeDebugState();
   }
 
+  public getFacingDirection(): FacingDirection {
+    return this.facing;
+  }
+
   public update(deltaMs: number): void {
     if (this.destroyed) {
       return;

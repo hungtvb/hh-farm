@@ -1,5 +1,7 @@
 import './styles.css';
+import './ui/mobileLayout.css';
 import { exposeBuildInfo } from './build/buildInfo';
+import { mountGameHud } from './ui/gameHud';
 
 async function bootstrap(): Promise<void> {
   exposeBuildInfo();
@@ -12,6 +14,13 @@ async function bootstrap(): Promise<void> {
     await runSaveSpikeHarness();
     return;
   }
+
+  const appRoot = document.querySelector<HTMLElement>('#app');
+  if (appRoot === null) {
+    throw new Error('Missing #app root for HH Farm.');
+  }
+
+  mountGameHud(appRoot);
 
   const { createGame } = await import('./game/bootstrap/createGame');
   createGame('game-root');

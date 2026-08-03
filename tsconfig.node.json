@@ -26,5 +26,9 @@
     "src/application/**/*.ts",
     "src/domain/**/*.ts",
     "src/data/**/*.ts"
+  ],
+  "exclude": [
+    "scripts/generate-visual-assets.mjs",
+    "scripts/validate-visual-assets.mjs"
   ]
 }

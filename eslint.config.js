@@ -32,7 +32,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js'],
+    files: [
+      'eslint.config.js',
+      'scripts/generate-visual-assets.mjs',
+      'scripts/validate-visual-assets.mjs',
+    ],
     extends: [tseslint.configs.disableTypeChecked],
   },
 );

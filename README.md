@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-215 — Implement farming commands and authoritative farm tile state`
+`TON-230 — Build visual foundation and asset pipeline v1`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content and pure farming command foundation. Visible farming controls and production art are tracked separately in Linear.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands and the first reproducible visual/UI foundation.
 
 ## Requirements
 
@@ -18,6 +18,8 @@ The repository currently contains the validated farm-map contract, player moveme
 ```bash
 npm ci
 npm run generate:maps
+npm run generate:assets
+npm run validate:assets
 npm run validate:content
 npm run dev
 npm run check
@@ -25,11 +27,19 @@ npm run test:e2e
 npm run preview
 ```
 
-`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run validate:content` compiles and validates the real crop/item/tool/shop source. `npm run check` runs both data gates, type checking, linting, unit tests, production build, build metadata and production diagnostics exclusion. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark, IndexedDB recovery and build identity in Chromium.
+`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run generate:assets` rebuilds the generated SVG visual pack and manifest. `npm run validate:assets` checks asset identity, naming, anchors, SVG structure and byte budget. `npm run validate:content` compiles and validates the real crop/item/tool/shop source.
+
+`npm run check` runs generated-map and generated-asset drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostics exclusion. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark, IndexedDB recovery, build identity and responsive visual shell in Chromium.
 
 ## Architecture
 
 ```text
+assets/
+└── source/          # Canonical visual-system inputs.
+
+public/assets/
+└── generated/       # Deterministic SVG output and manifest.
+
 src/
 ├── build/           # Immutable build/deployment identity.
 ├── domain/          # Pure game and farming state transitions.
@@ -37,10 +47,28 @@ src/
 ├── infrastructure/  # Browser adapters such as IndexedDB.
 ├── game/            # Phaser bootstrap, scenes, world loading and input adapters.
 ├── data/            # Typed content catalogs, Tiled contracts and validation.
-└── ui/              # Browser UI overlays and presenters.
+└── ui/              # Browser HUD, responsive layout and presenters.
 ```
 
 Domain and content validation remain isolated from Phaser and browser storage APIs, allowing farming rules, references, command failures, benchmark statistics and save migration to be tested without booting a renderer or IndexedDB.
+
+## Visual foundation
+
+The first in-game visual shell includes:
+
+- day and weather information;
+- coin and energy chips;
+- an objective card;
+- a responsive eight-slot hotbar;
+- click and keyboard slot selection;
+- hoe and watering-can icons;
+- untilled, tilled and watered soil states;
+- a selection cursor;
+- four-stage turnip, carrot and strawberry sheets.
+
+Visual tokens live in `assets/source/visual-system.json`. Generated files are reviewable SVG text and are never edited by hand. CI regenerates them and rejects output drift or a manifest that exceeds its budget.
+
+The DOM HUD owns presentation only. Phaser preloads the generated farm assets, while authoritative farming state remains in the domain layer. Desktop and portrait mobile screenshot gates verify safe-area composition, loaded assets and interactive selection. See [TON-230 visual foundation contract](docs/art/TON-230-visual-foundation.md).
 
 ## Farming commands
 
@@ -120,7 +148,7 @@ Setup, required GitHub rules and rollback instructions are in [TON-213 Cloudflar
 
 ## Verification
 
-GitHub Actions runs generated-map drift and content-catalog validation before typecheck, lint, unit tests, production build validation and serialized Chromium runtime tests. Farming unit tests explicitly verify atomic state references, deterministic planting yields and inventory-full harvest recovery. Production assets are scanned to ensure technical save diagnostics are absent.
+GitHub Actions runs generated map/asset drift, asset/content validation, typecheck, lint, 58 unit tests, production build validation and eight serialized Chromium runtime tests. Browser evidence covers movement and restart lifecycle, crop rendering benchmark, IndexedDB recovery, build identity, desktop HUD and portrait mobile composition. Production assets are scanned to ensure technical save diagnostics are absent.
 
 The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224`.
 

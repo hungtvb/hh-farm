@@ -1,0 +1,49 @@
+name: ChatGPT Node Modules Export
+
+on:
+  pull_request:
+    branches:
+      - feat/ton-220-vertical-slice-art-pack
+    paths:
+      - .github/workflows/chatgpt-node-modules-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export-node-modules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact branch base
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout exact PR base commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "${{ github.event.pull_request.base.sha }}"
+      - name: Install exact lockfile dependencies
+        shell: bash
+        run: npm ci --no-audit --no-fund
+      - name: Package dependencies with checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/hh-farm-node-modules.tar.gz"
+          lockHash="$RUNNER_TEMP/package-lock.sha256"
+          tar -C "$GITHUB_WORKSPACE" -czf "$archive" node_modules
+          sha256sum "$archive" > "$archive.sha256"
+          sha256sum package-lock.json > "$lockHash"
+      - name: Upload dependencies
+        uses: actions/upload-artifact@v4
+        with:
+          name: hh-farm-node-modules
+          path: |
+            ${{ runner.temp }}/hh-farm-node-modules.tar.gz
+            ${{ runner.temp }}/hh-farm-node-modules.tar.gz.sha256
+            ${{ runner.temp }}/package-lock.sha256
+          if-no-files-found: error
+          retention-days: 1

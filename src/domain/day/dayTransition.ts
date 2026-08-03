@@ -212,7 +212,6 @@ export function resolveNextDay(
   }
 
   const events: DayTransitionEvent[] = [];
-  let fieldChanged = false;
   const tiles = state.field.tiles.map((tile) => {
     const validated = validatedByTileId.get(tile.id);
     let nextCrop = tile.crop;
@@ -271,7 +270,6 @@ export function resolveNextDay(
     }
 
     if (tile.watered || nextCrop !== tile.crop) {
-      fieldChanged = true;
       return createUpdatedFarmTile(tile, {
         crop: nextCrop,
         watered: false,
@@ -290,6 +288,9 @@ export function resolveNextDay(
     }),
   );
 
+  const fieldChanged = tiles.some(
+    (tile, index) => tile !== state.field.tiles[index],
+  );
   const nextField = fieldChanged
     ? Object.freeze({ tiles: Object.freeze(tiles) })
     : state.field;

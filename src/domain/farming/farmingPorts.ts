@@ -7,7 +7,8 @@ export type FarmingCropContent = Readonly<{
   id: string;
   seedItemId: string;
   harvestItemId: string;
-  growthStages: readonly FarmingGrowthStageContent[];
+  /** Required by day-transition consumers; command-only ports may omit it. */
+  growthStages?: readonly FarmingGrowthStageContent[];
   growthStageCount: number;
   harvestYield: Readonly<{
     min: number;

@@ -43,7 +43,7 @@ export function createGame(
       disableWebAudio: false,
     },
     callbacks: {
-      preBoot: (game) => {
+      preBoot: (game: Phaser.Game) => {
         game.registry.set(FARM_GAME_RUNTIME_REGISTRY_KEY, farmRuntime);
       },
     },

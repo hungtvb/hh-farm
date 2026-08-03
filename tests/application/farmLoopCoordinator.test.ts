@@ -4,10 +4,14 @@ import {
   FarmLoopCoordinator,
   type FarmLoopResult,
 } from '../../src/application/farmLoop/farmLoopCoordinator.js';
-import { createInitialFarmLoopState } from '../../src/application/farmLoop/farmLoopState.js';
+import {
+  createInitialFarmLoopState,
+  replaceFarmLoopEconomy,
+} from '../../src/application/farmLoop/farmLoopState.js';
 import { createFarmingContentPort } from '../../src/application/farming/createFarmingContentPort.js';
 import { createFarmingInventoryPort } from '../../src/application/inventory/createFarmingInventoryPort.js';
 import { gameContentCatalog } from '../../src/data/content/index.js';
+import { sellInventoryItem } from '../../src/domain/economy/economyState.js';
 import { countInventoryItem } from '../../src/domain/inventory/inventoryState.js';
 
 function createCoordinator(options?: {
@@ -50,6 +54,18 @@ async function expectCompleted(
     throw new Error(`Expected completed, received ${result.status}.`);
   }
   return result;
+}
+
+async function growAndHarvestTurnip(
+  coordinator: FarmLoopCoordinator,
+): Promise<void> {
+  await expectCompleted(coordinator.perform('till'));
+  await expectCompleted(coordinator.perform('plant'));
+  for (let index = 0; index < 3; index += 1) {
+    await expectCompleted(coordinator.perform('water'));
+    await expectCompleted(coordinator.perform('next_day'));
+  }
+  await expectCompleted(coordinator.perform('harvest'));
 }
 
 describe('FarmLoopCoordinator', () => {
@@ -95,6 +111,33 @@ describe('FarmLoopCoordinator', () => {
     );
     expect(saves).toHaveLength(10);
     expect(saves.at(-1)).toBe(coordinator.getState());
+  });
+
+  it('observes an external shop sale and completes the sell tutorial step', async () => {
+    const { coordinator } = createCoordinator();
+    await growAndHarvestTurnip(coordinator);
+
+    const current = coordinator.getState();
+    expect(current.tutorial.step).toBe('sell');
+    const transaction = sellInventoryItem(
+      current.economy,
+      createEconomyCatalogPort(gameContentCatalog),
+      { itemId: 'produce.turnip', quantity: 1 },
+    );
+    expect(transaction.ok).toBe(true);
+    if (!transaction.ok) {
+      throw new Error(transaction.error.message);
+    }
+
+    await expectCompleted(
+      coordinator.commitExternal(
+        'shop_sell',
+        replaceFarmLoopEconomy(current, transaction.state),
+        transaction.events,
+      ),
+    );
+
+    expect(coordinator.getState().tutorial.step).toBe('completed');
   });
 
   it('rejects invalid actions with a clear reason and no save', async () => {

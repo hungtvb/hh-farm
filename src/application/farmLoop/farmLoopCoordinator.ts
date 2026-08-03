@@ -149,10 +149,10 @@ function applyTutorialEvents(
   });
 }
 
-function isTutorialObservedEvent(
+function isEconomyTransactionEvent(
   event: FarmLoopEvent,
-): event is TutorialObservedEvent {
-  return event.type !== 'tutorial-skipped';
+): event is EconomyTransactionEvent {
+  return event.type === 'item-bought' || event.type === 'item-sold';
 }
 
 function withFieldAndPlayerItems(
@@ -209,7 +209,7 @@ export class FarmLoopCoordinator {
     events: readonly FarmLoopEvent[] = Object.freeze([]),
   ): Promise<FarmLoopResult> {
     return this.execute(action, () => {
-      const observedEvents = events.filter(isTutorialObservedEvent);
+      const observedEvents = events.filter(isEconomyTransactionEvent);
       const state =
         observedEvents.length === 0
           ? candidate

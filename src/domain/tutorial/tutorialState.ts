@@ -20,7 +20,8 @@ export type TutorialState = Readonly<{
 export type TutorialObservedEvent =
   | FarmingDomainEvent
   | DayTransitionEvent
-  | EconomyTransactionEvent;
+  | EconomyTransactionEvent
+  | Readonly<{ type: 'tutorial-crop-matured' }>;
 
 export function createInitialTutorialState(): TutorialState {
   return Object.freeze({
@@ -79,20 +80,15 @@ export function observeTutorialEvent(
     return completeStep(state, 'water', 'next_day');
   }
 
-  if (event.type === 'crop-stage-advanced') {
-    if (state.skipped || state.step !== 'next_day') {
-      return state;
-    }
-
-    return createTutorialState({
-      step: event.stageIndex >= 3 ? 'harvest' : 'water',
-      skipped: false,
-      completedSteps: [...state.completedSteps, 'next_day'],
-    });
+  if (
+    event.type === 'crop-stage-advanced' ||
+    event.type === 'crop-growth-progressed'
+  ) {
+    return completeStep(state, 'next_day', 'water');
   }
 
-  if (event.type === 'crop-growth-progressed') {
-    return completeStep(state, 'next_day', 'water');
+  if (event.type === 'tutorial-crop-matured') {
+    return completeStep(state, 'water', 'harvest');
   }
 
   if (event.type === 'crop-harvested') {

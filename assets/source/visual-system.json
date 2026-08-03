@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "palette": {
+    "ink": "#3D4A35",
+    "inkSoft": "#65705B",
+    "cream": "#FFF4D6",
+    "creamDeep": "#F4DFAE",
+    "leaf": "#6FAE5B",
+    "leafDark": "#477B3D",
+    "mint": "#BFE3A4",
+    "sky": "#8FD7EA",
+    "sun": "#FFD46B",
+    "soil": "#A96F49",
+    "soilDark": "#74462F",
+    "water": "#6BC4D9",
+    "wood": "#C78C52",
+    "woodDark": "#7B4E2E",
+    "berry": "#E85C70",
+    "carrot": "#F39A4A",
+    "turnip": "#F5E7F4",
+    "shadow": "#263A2B"
+  },
+  "metrics": {
+    "chipRadius": 18,
+    "panelRadius": 26,
+    "slotRadius": 16,
+    "stroke": 3,
+    "iconSize": 64,
+    "tileSize": 64
+  },
+  "budgetBytes": 180000
+}

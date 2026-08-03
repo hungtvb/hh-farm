@@ -1,4 +1,4 @@
-name: ChatGPT Source Export
+name: ChatGPT Apply Mobile-First Patch
 
 on:
   pull_request:
@@ -6,51 +6,41 @@ on:
       - main
     paths:
       - .github/workflows/chatgpt-source-export.yml
+      - .chatgpt/ton233.patch.gz
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export-source:
+  apply-patch:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Checkout repository and full history
-        uses: actions/checkout@v4
+      - name: Checkout automation branch
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
-      - name: Checkout exact PR base commit
+      - name: Preserve and verify patch
         shell: bash
         run: |
           set -euo pipefail
-          git checkout --detach "${{ github.event.pull_request.base.sha }}"
-          git config --local --unset-all http.https://github.com/.extraheader || true
+          cp .chatgpt/ton233.patch.gz "$RUNNER_TEMP/ton233.patch.gz"
+          echo "14cf044fefd7c466d62229633d936bb0bca200426bb50ec2be5e90244d74dc83  $RUNNER_TEMP/ton233.patch.gz" | sha256sum --check
 
-      - name: Package exact source snapshot with Git history
+      - name: Apply patch to exact main commit
         shell: bash
         run: |
           set -euo pipefail
+          git checkout --detach 9db95dc57e981d40d30295544577ab781c6dc2b6
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gzip -dc "$RUNNER_TEMP/ton233.patch.gz" | git am
+          test "$(git rev-parse HEAD^{tree})" = "56dbad8c0a8feba11775c59651ee0f1754571286"
+          git diff --check HEAD^
 
-          archive="$RUNNER_TEMP/${GITHUB_REPOSITORY#*/}-main-with-git.tar.gz"
-          checksum="$archive.sha256"
-
-          tar -C "$GITHUB_WORKSPACE" -czf "$archive" .
-          test -s "$archive"
-
-          (
-            cd "$RUNNER_TEMP"
-            sha256sum "$(basename "$archive")" > "$(basename "$checksum")"
-          )
-
-      - name: Upload source snapshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-main-with-git
-          path: |
-            ${{ runner.temp }}/${{ github.event.repository.name }}-main-with-git.tar.gz
-            ${{ runner.temp }}/${{ github.event.repository.name }}-main-with-git.tar.gz.sha256
-          if-no-files-found: error
-          retention-days: 1
+      - name: Publish TON-233 feature branch
+        shell: bash
+        run: git push origin HEAD:refs/heads/feat/ton-233-direct-touch-auto-approach

@@ -15,13 +15,19 @@ import {
 import type { FarmingDomainEvent } from '../../src/domain/farming/farmingEvents.js';
 
 describe('farming content adapter', () => {
-  it('projects validated crop and harvest-item data into the domain port', () => {
+  it('projects validated crop, growth-stage and harvest-item data into the domain port', () => {
     const port = createFarmingContentPort(gameContentCatalog);
 
     expect(port.getCrop('turnip')).toEqual({
       id: 'turnip',
       seedItemId: 'seed.turnip',
       harvestItemId: 'produce.turnip',
+      growthStages: [
+        { spriteKey: 'crop.turnip.stage-0', durationDays: 1 },
+        { spriteKey: 'crop.turnip.stage-1', durationDays: 1 },
+        { spriteKey: 'crop.turnip.stage-2', durationDays: 1 },
+        { spriteKey: 'crop.turnip.stage-3', durationDays: null },
+      ],
       growthStageCount: 4,
       harvestYield: { min: 1, max: 2 },
       harvestItemStackLimit: 99,

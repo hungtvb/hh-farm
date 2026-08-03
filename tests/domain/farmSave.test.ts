@@ -45,6 +45,68 @@ describe('farm save contract', () => {
     });
   });
 
+  it('keeps legacy v2 saves valid when they do not contain a farm field', () => {
+    const result = decodeFarmSave({
+      schemaVersion: 2,
+      gameVersion: '0.1.0',
+      savedAt: SAVED_AT,
+      payload: {
+        farm: { farmName: 'HH Farm', day: 3, coins: 425 },
+        player: { x: 12, y: 34 },
+      },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      migratedFrom: null,
+      envelope: {
+        schemaVersion: 2,
+        gameVersion: '0.1.0',
+        savedAt: SAVED_AT,
+        payload: {
+          farm: { farmName: 'HH Farm', day: 3, coins: 425 },
+          player: { x: 12, y: 34 },
+        },
+      },
+    });
+  });
+
+  it('rejects a malformed optional farm field instead of loading partial state', () => {
+    const result = decodeFarmSave({
+      schemaVersion: 2,
+      gameVersion: '0.1.0',
+      savedAt: SAVED_AT,
+      payload: {
+        farm: { farmName: 'HH Farm', day: 2, coins: 300 },
+        player: { x: 144, y: 224 },
+        field: {
+          tiles: [
+            {
+              id: 'farm.main:0:0',
+              coordinate: { x: 0, y: 0 },
+              soil: 'tilled',
+              watered: false,
+              crop: {
+                instanceId: 'wrong-instance-id',
+                cropId: 'carrot',
+                plantedDay: 1,
+                growthStageIndex: 2,
+                growthProgressDays: 1,
+                harvestQuantity: 2,
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        'Save field tile[0].crop.instanceId must equal "farm.main:0:0:carrot:1".',
+    });
+  });
+
   it('migrates the v1 flat payload to v2 deterministically', () => {
     const result = decodeFarmSave(createLegacySave());
 

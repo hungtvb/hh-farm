@@ -11,6 +11,8 @@ export type GameHudModel = Readonly<{
 export type GameHudController = Readonly<{
   root: HTMLElement;
   selectSlot: (slotIndex: number) => void;
+  setDay: (day: number) => void;
+  markDayTransitionComplete: (eventCount: number) => void;
   destroy: () => void;
 }>;
 
@@ -78,6 +80,15 @@ function createChip(
   return chip;
 }
 
+function requireChipTitle(chip: HTMLElement): HTMLElement {
+  const title = chip.querySelector<HTMLElement>('.hh-chip__title');
+  if (title === null) {
+    throw new Error('HUD chip is missing its title element.');
+  }
+
+  return title;
+}
+
 function createHotbarIcon(slot: HotbarSlot): HTMLElement | undefined {
   if (slot.asset === undefined) {
     return undefined;
@@ -111,6 +122,25 @@ export function mountGameHud(
     `Ngày ${String(model.day)}`,
     model.weatherLabel,
   );
+  const dayTitle = requireChipTitle(dayChip);
+
+  const setDay = (day: number): void => {
+    if (!Number.isInteger(day) || day < 1) {
+      throw new Error('HUD day must be a positive integer.');
+    }
+
+    dayTitle.textContent = `Ngày ${String(day)}`;
+    root.dataset.day = String(day);
+  };
+
+  const markDayTransitionComplete = (eventCount: number): void => {
+    if (!Number.isInteger(eventCount) || eventCount < 1) {
+      throw new Error('Day transition event count must be a positive integer.');
+    }
+
+    root.dataset.dayTransitionEvents = String(eventCount);
+    root.dataset.dayTransitionStatus = 'complete';
+  };
 
   const brand = createElement('div', 'hh-brand');
   const brandEyebrow = createElement('span', 'hh-brand__eyebrow');
@@ -208,6 +238,7 @@ export function mountGameHud(
   bottomArea.append(tooltip, hotbar);
   root.append(topBar, prompt, bottomArea);
   appRoot.append(root);
+  setDay(model.day);
   selectSlot(0);
 
   const handleKeyboard = (event: KeyboardEvent): void => {
@@ -220,6 +251,8 @@ export function mountGameHud(
   return Object.freeze({
     root,
     selectSlot,
+    setDay,
+    markDayTransitionComplete,
     destroy: () => {
       window.removeEventListener('keydown', handleKeyboard);
       root.remove();

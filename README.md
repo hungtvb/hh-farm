@@ -4,9 +4,9 @@ A cozy, browser-first 2D farming game built with Phaser 4, TypeScript and Vite.
 
 ## Current milestone
 
-`TON-230 — Build visual foundation and asset pipeline v1`
+`TON-216 — Implement day transition and crop growth lifecycle`
 
-The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands and the first reproducible visual/UI foundation.
+The repository currently contains the validated farm-map contract, player movement prototype, reproducible crop benchmark, versioned local-save foundation, Pages delivery pipeline, typed gameplay content, atomic farming commands, a generated visual/UI foundation and guarded next-day crop growth.
 
 ## Requirements
 
@@ -27,9 +27,9 @@ npm run test:e2e
 npm run preview
 ```
 
-`npm run generate:maps` rebuilds the deterministic contract fixture at `public/maps/farm-test.json`. `npm run generate:assets` rebuilds the generated SVG visual pack and manifest. `npm run validate:assets` checks asset identity, naming, anchors, SVG structure and byte budget. `npm run validate:content` compiles and validates the real crop/item/tool/shop source.
+`npm run generate:maps` rebuilds the deterministic map fixture. `npm run generate:assets` rebuilds the generated SVG visual pack and manifest. `npm run validate:assets` checks identity, naming, anchors, SVG structure and byte budget. `npm run validate:content` validates the crop/item/tool/shop catalog.
 
-`npm run check` runs generated-map and generated-asset drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostics exclusion. `npm run test:e2e` rebuilds in the dedicated `e2e` mode, then verifies the farm runtime, scene restart lifecycle, crop benchmark, IndexedDB recovery, build identity and responsive visual shell in Chromium.
+`npm run check` runs generated-output drift checks, asset/content validation, type checking, linting, unit tests, production build, build metadata and production diagnostic exclusion. `npm run test:e2e` rebuilds in the dedicated E2E mode and verifies player lifecycle, crop benchmark, IndexedDB recovery, guarded day transition, build identity and responsive UI in Chromium.
 
 ## Architecture
 
@@ -42,66 +42,75 @@ public/assets/
 
 src/
 ├── build/           # Immutable build/deployment identity.
-├── domain/          # Pure game and farming state transitions.
-├── application/     # Use cases, ports and renderer/content adapters.
+├── domain/          # Pure farming, day, save and benchmark rules.
+├── application/     # Coordinators, use cases and abstract ports.
 ├── infrastructure/  # Browser adapters such as IndexedDB.
-├── game/            # Phaser bootstrap, scenes, world loading and input adapters.
-├── data/            # Typed content catalogs, Tiled contracts and validation.
+├── game/            # Phaser bootstrap, scenes, world and input adapters.
+├── data/            # Typed content catalogs and map validation.
 └── ui/              # Browser HUD, responsive layout and presenters.
 ```
 
-Domain and content validation remain isolated from Phaser and browser storage APIs, allowing farming rules, references, command failures, benchmark statistics and save migration to be tested without booting a renderer or IndexedDB.
+Domain and content validation remain isolated from Phaser and browser storage APIs. Application coordinators depend on abstract ports; UI and IndexedDB provide concrete adapters at the edge.
+
+## Day transition and crop growth
+
+`resolveNextDay` validates every crop before creating an immutable candidate. A successful transition:
+
+- increments the farm day exactly once;
+- dries every watered tile;
+- advances watered crops by at most one stage;
+- tracks progress through multi-day stages;
+- pauses unwatered crops without killing or resetting them;
+- preserves mature crops for harvesting;
+- emits typed crop events followed by one day event.
+
+`RequestNextDayCoordinator` rejects concurrent requests and enforces this order:
+
+```text
+resolve candidate
+→ critical IndexedDB save
+→ in-memory commit
+→ HUD/animation presentation
+```
+
+A save failure leaves the current state untouched. A presentation failure does not roll back gameplay state that was already saved and committed.
+
+The v2 save envelope remains backward compatible: older v2 payloads may omit `field`; new saves persist and validate the complete farm field, soil, water, crop stage, progress and predetermined yield. The HUD displays the committed day through an abstract `DayHudPort`.
+
+See [TON-216 day-transition contract](docs/farming/TON-216-day-transition.md).
 
 ## Visual foundation
 
-The first in-game visual shell includes:
+The first in-game visual shell includes day/weather, coin and energy chips, an objective card, responsive eight-slot hotbar, tool icons, three soil states, a selection cursor and four-stage turnip/carrot/strawberry sheets.
 
-- day and weather information;
-- coin and energy chips;
-- an objective card;
-- a responsive eight-slot hotbar;
-- click and keyboard slot selection;
-- hoe and watering-can icons;
-- untilled, tilled and watered soil states;
-- a selection cursor;
-- four-stage turnip, carrot and strawberry sheets.
+Visual tokens live in `assets/source/visual-system.json`. Generated SVGs are reviewable text and are never edited by hand. CI regenerates them and rejects output drift, stale files or budget violations.
 
-Visual tokens live in `assets/source/visual-system.json`. Generated files are reviewable SVG text and are never edited by hand. CI regenerates them and rejects output drift or a manifest that exceeds its budget.
-
-The DOM HUD owns presentation only. Phaser preloads the generated farm assets, while authoritative farming state remains in the domain layer. Desktop and portrait mobile screenshot gates verify safe-area composition, loaded assets and interactive selection. See [TON-230 visual foundation contract](docs/art/TON-230-visual-foundation.md).
+The DOM HUD owns presentation only. Phaser preloads generated farm assets while authoritative farming state remains in the domain layer. See [TON-230 visual foundation contract](docs/art/TON-230-visual-foundation.md).
 
 ## Farming commands
 
-`FarmTileState` is the authoritative source for soil, water and crop state. The pure command layer provides:
+`FarmTileState` is authoritative for soil, water and crop state. The pure command layer provides:
 
 - `tillSoil`;
 - `plantSeed`;
 - `waterTile`;
 - `harvestCrop`.
 
-Commands return immutable success/failure results and typed domain events. Failed commands retain the exact original aggregate state and emit no events. Planting consumes one seed only after all preconditions pass. Harvesting clears a mature crop only after inventory accepts the full predetermined yield; a full inventory leaves the crop untouched.
+Failed commands retain the exact original aggregate and emit no events. Planting consumes a seed only after all preconditions pass. Harvest clears a mature crop only after inventory accepts the complete predetermined yield.
 
-Content and inventory are supplied through pure ports. Phaser receives projected tile state and events through an application renderer adapter; it does not own farming rules. See [TON-215 farming command contract](docs/farming/TON-215-farming-commands.md).
+Content and inventory are supplied through pure ports. Phaser receives projected tile state and events and does not own farming rules. See [TON-215 farming command contract](docs/farming/TON-215-farming-commands.md).
 
 ## Typed gameplay content
 
-The source catalog defines:
+The validated source catalog defines turnip, carrot and strawberry crops, seed/produce items, hoe/watering-can tools, seed shop offers, sprite keys and ordered growth stages.
 
-- turnip, carrot and strawberry crops;
-- seed and harvested-produce items;
-- hoe and watering-can tools;
-- seed shop offers;
-- registered sprite keys and crop growth stages.
-
-Catalog validation rejects duplicate IDs, negative prices, invalid quantities and boundaries, missing sprite keys, malformed growth stages, invalid yields and broken item/category references. Every issue includes a path, stable error code and message.
-
-Gameplay code consumes the validated immutable `gameContentCatalog`; it must not duplicate prices, growth durations, yields or sprite keys. See [data-layer documentation](src/data/README.md).
+Validation rejects duplicate IDs, negative prices, missing sprites, malformed growth stages, invalid yields and broken references. Gameplay consumes the immutable `gameContentCatalog`; feature code must not duplicate prices, growth durations, yields or sprite keys. See [data-layer documentation](src/data/README.md).
 
 ## World authoring
 
-The technical test world is generated deterministically as Tiled-compatible orthogonal JSON. Production maps use the same required layer names, object properties and stable identity rules documented in [Farm map contract v1](docs/maps/farm-map-contract.md).
+The technical world is generated deterministically as Tiled-compatible orthogonal JSON. Production maps use the same required layers, properties and stable identity rules documented in [Farm map contract v1](docs/maps/farm-map-contract.md).
 
-Tiled numeric object IDs are editor metadata and must not be used as persistent game identity. Object layers use globally unique semantic `stableId` properties instead.
+Tiled numeric object IDs are editor metadata and must not be used as persistent game identity. Object layers use globally unique semantic `stableId` values.
 
 ## Crop benchmark
 
@@ -110,47 +119,29 @@ npm run build
 npm run preview -- --host 0.0.0.0 --port 4173
 ```
 
+Open:
+
 ```text
 http://localhost:4173/?benchmark=crops&strategy=static
 ```
 
-The scene renders 300 crops, warms up for one second, samples for five seconds and displays mean FPS, p95 frame time and Long Task count. Automated evidence recommends individual crop Images with event-driven state changes and no per-frame crop update loop. Physical-device targets remain documented in [TON-210 benchmark report](docs/benchmarks/TON-210-crop-render-memory.md).
+The benchmark renders 300 crops and reports mean FPS, p95 frame time and Long Task count. Automated evidence recommends individual crop Images with event-driven state changes and no per-frame crop update loop. Physical-device targets remain in [TON-210 benchmark report](docs/benchmarks/TON-210-crop-render-memory.md).
 
-## IndexedDB save spike
+## IndexedDB save and recovery
 
-The v2 envelope stores game/schema metadata and farm/player payload. IndexedDB keeps `current` and `previous` slots; invalid current data returns an explicit recovered/unrecoverable result rather than silently resetting the farm.
+IndexedDB keeps `current` and `previous` slots. Invalid current data produces explicit recovered/unrecoverable results rather than silently resetting the farm. E2E diagnostics are excluded from production bundles. See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md).
 
-Recovery diagnostics are available only in E2E builds and are excluded from production assets. See [TON-212 save and recovery contract](docs/save/TON-212-versioned-indexeddb.md).
+## Build identity and delivery
 
-## Build identity
+Every build emits `/version.json`; the same identity is attached to the running app. Deployment tests reject mismatched commits or environments.
 
-Every build emits:
-
-```text
-/version.json
-```
-
-The same app version, commit SHA, ref, build time and deployment environment are attached to the root HTML element. Runtime and deployment tests reject mismatched identity.
-
-## Cloudflare Pages delivery
-
-`Verify` runs on pull requests and `main`. After it succeeds, `Deploy Pages`:
-
-- deploys same-repository pull requests as preview branches;
-- deploys successful `main` builds as production;
-- rebuilds with exact release metadata;
-- verifies the deployed commit, environment, farm map and referenced assets;
-- comments the verified preview URL on the pull request.
-
-Cloudflare publishing remains safely skipped until repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are configured. Build output is `dist`; project name is `hh-farm`.
-
-Setup, required GitHub rules and rollback instructions are in [TON-213 Cloudflare Pages runbook](docs/deployment/TON-213-cloudflare-pages.md).
+After `Verify` succeeds, `Deploy Pages` can publish same-repository pull requests as previews and `main` as production, then smoke-test the deployed identity, map and referenced assets. Cloudflare publishing remains safely skipped until `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are configured. See [TON-213 Pages runbook](docs/deployment/TON-213-cloudflare-pages.md).
 
 ## Verification
 
-GitHub Actions runs generated map/asset drift, asset/content validation, typecheck, lint, 58 unit tests, production build validation and eight serialized Chromium runtime tests. Browser evidence covers movement and restart lifecycle, crop rendering benchmark, IndexedDB recovery, build identity, desktop HUD and portrait mobile composition. Production assets are scanned to ensure technical save diagnostics are absent.
+GitHub Actions runs generated map/asset drift, asset/content validation, strict typecheck/lint, unit tests, production build validation and serialized Chromium runtime tests. Production bundles are scanned to ensure save/day-transition diagnostics are absent.
 
-The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production asset-loading budgets are handled by `TON-224`.
+The current scaffold intentionally ships Phaser in the initial game bundle. Bundle splitting and production loading budgets are tracked by `TON-224`.
 
 ## Project links
 

@@ -1,4 +1,6 @@
 import type { FarmState } from '../farm/farmState';
+import type { FarmFieldState } from '../farming/farmTileState.js';
+import { decodeFarmField } from './farmFieldSave.js';
 
 export const FARM_SAVE_SCHEMA_VERSION = 2;
 
@@ -10,6 +12,8 @@ export type FarmPlayerPosition = Readonly<{
 export type FarmSavePayload = Readonly<{
   farm: FarmState;
   player: FarmPlayerPosition;
+  /** Optional for backward compatibility with the original v2 save spike. */
+  field?: FarmFieldState;
 }>;
 
 export type FarmSaveEnvelope = Readonly<{
@@ -128,6 +132,36 @@ function decodeV2(value: UnknownRecord): DecodeFarmSaveResult {
     return { ok: false, error: 'Player coordinates must be finite numbers.' };
   }
 
+  const basePayload = {
+    farm: {
+      farmName: farm.farmName.trim(),
+      day: farm.day,
+      coins: farm.coins,
+    },
+    player: {
+      x: player.x,
+      y: player.y,
+    },
+  };
+
+  if (value.payload.field === undefined) {
+    return {
+      ok: true,
+      migratedFrom: null,
+      envelope: {
+        schemaVersion: FARM_SAVE_SCHEMA_VERSION,
+        gameVersion: metadata.gameVersion,
+        savedAt: metadata.savedAt,
+        payload: basePayload,
+      },
+    };
+  }
+
+  const field = decodeFarmField(value.payload.field);
+  if (!field.ok) {
+    return { ok: false, error: field.error };
+  }
+
   return {
     ok: true,
     migratedFrom: null,
@@ -136,15 +170,8 @@ function decodeV2(value: UnknownRecord): DecodeFarmSaveResult {
       gameVersion: metadata.gameVersion,
       savedAt: metadata.savedAt,
       payload: {
-        farm: {
-          farmName: farm.farmName.trim(),
-          day: farm.day,
-          coins: farm.coins,
-        },
-        player: {
-          x: player.x,
-          y: player.y,
-        },
+        ...basePayload,
+        field: field.field,
       },
     },
   };

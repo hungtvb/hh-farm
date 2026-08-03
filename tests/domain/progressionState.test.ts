@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   createProgressionState,
+  isSeedItemUnlocked,
   observeProgressionEvent,
   observeProgressionEvents,
+  requiredLevelForSeedItem,
 } from '../../src/domain/progression/progressionState.js';
 
 describe('progression state', () => {
@@ -22,6 +24,24 @@ describe('progression state', () => {
       level: 3,
       unlockedCropIds: ['turnip', 'carrot', 'strawberry'],
     });
+  });
+
+  it('enforces seed unlocks from progression rather than shop day alone', () => {
+    const levelOne = createProgressionState(0);
+    const levelTwo = createProgressionState(100);
+    const levelThree = createProgressionState(200);
+
+    expect(requiredLevelForSeedItem('seed.turnip')).toBe(1);
+    expect(requiredLevelForSeedItem('seed.carrot')).toBe(2);
+    expect(requiredLevelForSeedItem('seed.strawberry')).toBe(3);
+    expect(requiredLevelForSeedItem('tool.hoe')).toBeNull();
+
+    expect(isSeedItemUnlocked(levelOne, 'seed.turnip')).toBe(true);
+    expect(isSeedItemUnlocked(levelOne, 'seed.carrot')).toBe(false);
+    expect(isSeedItemUnlocked(levelTwo, 'seed.carrot')).toBe(true);
+    expect(isSeedItemUnlocked(levelTwo, 'seed.strawberry')).toBe(false);
+    expect(isSeedItemUnlocked(levelThree, 'seed.strawberry')).toBe(true);
+    expect(isSeedItemUnlocked(levelOne, 'tool.hoe')).toBe(true);
   });
 
   it('awards XP only for committed plant, harvest and produce-sale events', () => {

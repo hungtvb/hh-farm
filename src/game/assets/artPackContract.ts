@@ -109,7 +109,7 @@ export function getPlayerFrameAddress(
     animationId,
     direction,
     frameIndex,
-    stableFrameKey: `${animationId}.${direction}.${String(frameIndex).padStart(2, '0')}`,
+    stableFrameKey: `${animationId}.${direction}.${String(frameIndex + 1).padStart(2, '0')}`,
   });
 }
 

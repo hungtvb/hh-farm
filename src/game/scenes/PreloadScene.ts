@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { preloadRuntimeArtPack } from '../assets/runtimeArtPack';
 import { preloadVisualAssets } from '../assets/visualAssets';
 import { preloadFarmWorld } from '../world/farmWorld';
 
@@ -18,6 +19,7 @@ export class PreloadScene extends Phaser.Scene {
   public preload(): void {
     preloadFarmWorld(this);
     preloadVisualAssets(this);
+    preloadRuntimeArtPack(this);
   }
 
   public create(): void {

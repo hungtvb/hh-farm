@@ -37,13 +37,13 @@ describe('vertical slice art pack contract', () => {
       animationId: 'player.walk',
       direction: 'down',
       frameIndex: 0,
-      stableFrameKey: 'player.walk.down.00',
+      stableFrameKey: 'player.walk.down.01',
     });
     expect(walkFrames.at(-1)).toEqual({
       animationId: 'player.walk',
       direction: 'up',
       frameIndex: 5,
-      stableFrameKey: 'player.walk.up.05',
+      stableFrameKey: 'player.walk.up.06',
     });
   });
 

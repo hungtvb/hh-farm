@@ -18,8 +18,15 @@ import {
   resolveWorldInteractionTarget,
   type WorldInteractionTarget,
 } from '../../domain/world/worldInteractionTarget';
+import {
+  getCropFrameKey,
+  getCropTextureKey,
+  getEnvironmentFrameKey,
+  getEnvironmentTextureKey,
+  playerAnimationForFarmAction,
+  registerRuntimeArtPack,
+} from '../assets/runtimeArtPack';
 import { VISUAL_TEXTURE_KEYS } from '../assets/visualAssets';
-import { createPlayerTextures } from '../player/createPlayerTextures';
 import { createPlayerCollisionWorld } from '../player/collisionWorld';
 import {
   PlayerController,
@@ -38,7 +45,6 @@ const ACTION_KEY_CODES = [
 ] as const;
 const TILE_DISPLAY_SIZE = 58;
 const TILE_SPACING = 64;
-const CROP_STAGE_SIZE = 64;
 const FARM_TILE_HIT_AREA_SIZE = 72;
 const WORLD_OBJECT_HIT_AREA_SIZE = 84;
 const MAX_TAP_DISTANCE = 18;
@@ -124,6 +130,7 @@ export class FarmScene extends Phaser.Scene {
   private directIntent: PendingDirectIntent | undefined;
   private directIntentToken = 0;
   private actionPending = false;
+  private actionImpactCommitCount = 0;
 
   private readonly handleActionInput = (): void => {
     if (!this.actionPending && this.directIntent === undefined) {
@@ -142,6 +149,7 @@ export class FarmScene extends Phaser.Scene {
   public create(): void {
     farmSceneCreateCount += 1;
 
+    const artRegistration = registerRuntimeArtPack(this);
     const { map, metadata } = createFarmWorld(this);
     const mapSummary = [
       `${String(map.width)}×${String(map.height)} tiles`,
@@ -158,6 +166,12 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.mapSummary = mapSummary;
     this.game.canvas.dataset.worldInputMode = 'direct-manipulation';
     this.game.canvas.dataset.worldIntentStatus = 'idle';
+    this.game.canvas.dataset.worldActionImpactCommitCount = '0';
+    this.game.canvas.dataset.runtimeArtFrameCount = String(
+      artRegistration.playerFrameCount +
+        artRegistration.environmentFrameCount +
+        artRegistration.cropFrameCount,
+    );
 
     const diagnosticsEnabled = new URLSearchParams(window.location.search).has(
       'world-debug',
@@ -175,6 +189,7 @@ export class FarmScene extends Phaser.Scene {
       farmableRegion.x + farmableRegion.width / 2,
       farmableRegion.y + farmableRegion.height - 32,
     );
+    this.createEnvironmentDecorations();
     this.createAuthoritativeFarmGrid(tutorialTilePosition);
     this.createWorldInteractionObjects();
 
@@ -183,7 +198,6 @@ export class FarmScene extends Phaser.Scene {
     );
     this.renderFarmState(true);
 
-    createPlayerTextures(this);
     this.playerController = new PlayerController(this, {
       sceneInstance: farmSceneCreateCount,
       spawnX: metadata.playerSpawn.x,
@@ -262,6 +276,40 @@ export class FarmScene extends Phaser.Scene {
     this.game.canvas.dataset.cameraZoom = cameraZoom.toFixed(2);
   }
 
+
+  private createEnvironmentDecorations(): void {
+    const decorations = [
+      { kind: 'grass' as const, variant: 0, x: 112, y: 144 },
+      { kind: 'grass' as const, variant: 2, x: 176, y: 336 },
+      { kind: 'grass' as const, variant: 3, x: 816, y: 352 },
+      { kind: 'water' as const, variant: 0, x: 816, y: 144 },
+      { kind: 'water' as const, variant: 2, x: 816, y: 208 },
+      { kind: 'wood' as const, variant: 1, x: 112, y: 464 },
+      { kind: 'wood' as const, variant: 3, x: 848, y: 464 },
+    ];
+
+    for (const decoration of decorations) {
+      this.add
+        .image(
+          decoration.x,
+          decoration.y,
+          getEnvironmentTextureKey(decoration.kind),
+          getEnvironmentFrameKey(decoration.kind, decoration.variant),
+        )
+        .setDisplaySize(64, 64)
+        .setDepth(decoration.y);
+    }
+
+    this.game.canvas.dataset.environmentDecorationCount = String(
+      decorations.length,
+    );
+    this.game.canvas.dataset.environmentDecorationFrames = decorations
+      .map((decoration) =>
+        getEnvironmentFrameKey(decoration.kind, decoration.variant),
+      )
+      .join(',');
+  }
+
   private createAuthoritativeFarmGrid(
     tutorialTilePosition: Phaser.Math.Vector2,
   ): void {
@@ -281,8 +329,12 @@ export class FarmScene extends Phaser.Scene {
         .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
         .setDepth(position.y);
       const crop = this.add
-        .image(position.x, position.y, VISUAL_TEXTURE_KEYS.cropTurnipStages)
-        .setCrop(0, 0, CROP_STAGE_SIZE, CROP_STAGE_SIZE)
+        .image(
+          position.x,
+          position.y,
+          getCropTextureKey('turnip'),
+          getCropFrameKey('turnip', 0),
+        )
         .setDisplaySize(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
         .setDepth(position.y + 1)
         .setVisible(false);
@@ -323,7 +375,7 @@ export class FarmScene extends Phaser.Scene {
       .setDepth(tutorialTilePosition.y + 3)
       .setVisible(false);
 
-    this.game.canvas.dataset.visualAssetCount = '5';
+    this.game.canvas.dataset.visualAssetCount = '13';
     this.game.canvas.dataset.visualPrototype = 'authoritative-farm-grid';
     this.game.canvas.dataset.worldFarmTileId = TUTORIAL_TILE_ID;
     this.game.canvas.dataset.worldFarmTileCount = String(
@@ -504,13 +556,12 @@ export class FarmScene extends Phaser.Scene {
     player.setFacingDirection(pending.intent.approach.facing);
 
     try {
-      await player.playActionAnimation();
-      await this.commitAction(
+      const committed = await this.performActionAtImpact(
         pending.intent.action,
         pending.intent.target,
         pending.domainTileId,
       );
-      canvas.dataset.worldIntentStatus = 'completed';
+      canvas.dataset.worldIntentStatus = committed ? 'completed' : 'cancelled';
     } finally {
       if (this.directIntent?.token === token) {
         this.directIntent = undefined;
@@ -594,14 +645,10 @@ export class FarmScene extends Phaser.Scene {
       if (tile.crop === null) {
         visual.crop.setVisible(false);
       } else {
-        visual.crop
-          .setCrop(
-            Math.min(tile.crop.growthStageIndex, 3) * CROP_STAGE_SIZE,
-            0,
-            CROP_STAGE_SIZE,
-            CROP_STAGE_SIZE,
-          )
-          .setVisible(true);
+        const stage = Math.min(tile.crop.growthStageIndex, 3);
+        const textureKey = getCropTextureKey(tile.crop.cropId);
+        const frameKey = getCropFrameKey(tile.crop.cropId, stage);
+        visual.crop.setTexture(textureKey, frameKey).setVisible(true);
       }
     }
 
@@ -629,8 +676,23 @@ export class FarmScene extends Phaser.Scene {
     const guidedTileId = guidedCropTileId(state);
     if (guidedTileId === undefined) {
       delete canvas.dataset.worldGuidedCropTileId;
+      delete canvas.dataset.worldCropTextureKey;
+      delete canvas.dataset.worldCropFrameKey;
     } else {
       canvas.dataset.worldGuidedCropTileId = guidedTileId;
+      const guidedTile = getFarmTile(state.field, guidedTileId);
+      if (guidedTile?.crop === null || guidedTile?.crop === undefined) {
+        delete canvas.dataset.worldCropTextureKey;
+        delete canvas.dataset.worldCropFrameKey;
+      } else {
+        canvas.dataset.worldCropTextureKey = getCropTextureKey(
+          guidedTile.crop.cropId,
+        );
+        canvas.dataset.worldCropFrameKey = getCropFrameKey(
+          guidedTile.crop.cropId,
+          Math.min(guidedTile.crop.growthStageIndex, 3),
+        );
+      }
     }
   }
 
@@ -779,12 +841,36 @@ export class FarmScene extends Phaser.Scene {
     this.actionPending = true;
     this.game.canvas.dataset.worldActionPending = 'true';
     try {
-      await this.playerController?.playActionAnimation();
-      await this.commitAction(action, target, domainTileId);
+      await this.performActionAtImpact(action, target, domainTileId);
     } finally {
       this.actionPending = false;
       this.game.canvas.dataset.worldActionPending = 'false';
     }
+  }
+
+
+  private async performActionAtImpact(
+    action: FarmLoopTutorialAction,
+    target: WorldInteractionTarget,
+    domainTileId: string,
+  ): Promise<boolean> {
+    const player = this.playerController;
+    if (player === undefined) {
+      return false;
+    }
+
+    const impactCountBefore = this.actionImpactCommitCount;
+    const completed = await player.playActionAnimation(
+      playerAnimationForFarmAction(action),
+      async () => {
+        await this.commitAction(action, target, domainTileId);
+        this.actionImpactCommitCount += 1;
+        this.game.canvas.dataset.worldActionImpactCommitCount = String(
+          this.actionImpactCommitCount,
+        );
+      },
+    );
+    return completed && this.actionImpactCommitCount > impactCountBefore;
   }
 
   private async commitAction(
@@ -850,6 +936,7 @@ export class FarmScene extends Phaser.Scene {
     this.directIntent = undefined;
     this.directIntentToken = 0;
     this.actionPending = false;
+    this.actionImpactCommitCount = 0;
   };
 
   private writePhysicsDebugState(): void {

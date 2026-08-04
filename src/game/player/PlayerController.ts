@@ -5,17 +5,27 @@ import {
   resolveFacingDirection,
   resolveMovementVector,
 } from '../../domain/player/movement';
-import { getPlayerTextureKey } from './createPlayerTextures';
+import {
+  getPlayerFrameAddress,
+  PLAYER_ANIMATIONS,
+  PLAYER_BODY,
+  PLAYER_FOOT_Y,
+  PLAYER_ORIGIN,
+  type PlayerAnimationId,
+} from '../assets/artPackContract';
+import {
+  getPlayerAnimationKey,
+  RUNTIME_ART_TEXTURE_KEYS,
+} from '../assets/runtimeArtPack';
+import {
+  advancePlayerAnimationTimeline,
+  createPlayerAnimationTimeline,
+  type PlayerAnimationTimelineState,
+} from './playerAnimationTimeline';
 
 const PLAYER_SPEED = 150;
-const WALK_FRAME_DURATION_MS = 130;
-const PLAYER_BODY_WIDTH = 18;
-const PLAYER_BODY_HEIGHT = 12;
-const PLAYER_BODY_OFFSET_X = 7;
-const PLAYER_BODY_OFFSET_Y = 35;
 const DEFAULT_AUTO_MOVE_ARRIVAL_THRESHOLD = 5;
 const DEFAULT_AUTO_MOVE_TIMEOUT_MS = 8_000;
-const ACTION_TWEEN_DURATION_MS = 90;
 
 let activeControllerCount = 0;
 let restartRequestCount = 0;
@@ -42,6 +52,8 @@ export type PlayerAutoMoveRequest = Readonly<{
   onCancel?: (reason: PlayerAutoMoveCancelReason) => void;
 }>;
 
+export type PlayerActionImpact = () => Promise<void>;
+
 type ActiveAutoMove = Readonly<{
   x: number;
   y: number;
@@ -54,10 +66,22 @@ type ActiveAutoMove = Readonly<{
   elapsedMs: number;
 };
 
+type ActiveAction = {
+  animationId: PlayerAnimationId;
+  timeline: PlayerAnimationTimelineState;
+  impactSettled: boolean;
+  visualCompleted: boolean;
+  onImpact: PlayerActionImpact;
+  resolve: (completed: boolean) => void;
+  reject: (reason: unknown) => void;
+};
+
 function prefersReducedMotion(): boolean {
   return (
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    (typeof document !== 'undefined' &&
+      document.documentElement.dataset.reducedMotion === 'true') ||
+    (typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   );
 }
 
@@ -76,10 +100,9 @@ export class PlayerController {
   private readonly sceneInstance: number;
 
   private facing: FacingDirection = 'down';
-  private walkElapsedMs = 0;
-  private walkFrame: 'walk-a' | 'walk-b' = 'walk-a';
   private autoMove: ActiveAutoMove | undefined;
-  private actionAnimating = false;
+  private activeAction: ActiveAction | undefined;
+  private actionImpactDispatchCount = 0;
   private destroyed = false;
 
   private readonly handleRestart = (): void => {
@@ -112,22 +135,25 @@ export class PlayerController {
     this.restartKey.on('down', this.handleRestart);
 
     this.shadow = scene.add
-      .ellipse(options.spawnX, options.spawnY - 3, 24, 10, 0x355f36, 0.22)
+      .ellipse(options.spawnX, options.spawnY - 3, 28, 10, 0x355f36, 0.22)
       .setDepth(options.spawnY - 1);
 
+    const initialFrame = getPlayerFrameAddress('player.idle', this.facing, 0);
     this.sprite = scene.physics.add
       .sprite(
         options.spawnX,
         options.spawnY,
-        getPlayerTextureKey(this.facing, 'idle'),
+        RUNTIME_ART_TEXTURE_KEYS.player,
+        initialFrame.stableFrameKey,
       )
-      .setOrigin(0.5, 1)
-      .setBodySize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT, false)
-      .setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y)
+      .setOrigin(PLAYER_ORIGIN.x, PLAYER_ORIGIN.y)
+      .setBodySize(PLAYER_BODY.width, PLAYER_BODY.height, false)
+      .setOffset(PLAYER_BODY.offsetX, PLAYER_BODY.offsetY)
       .setCollideWorldBounds(true)
       .setDepth(options.spawnY);
 
     this.sprite.setPushable(false);
+    this.playLocomotionAnimation('player.idle');
 
     activeControllerCount += 1;
     this.writeDebugState();
@@ -142,7 +168,7 @@ export class PlayerController {
   }
 
   public moveTo(request: PlayerAutoMoveRequest): void {
-    if (this.destroyed) {
+    if (this.destroyed || this.activeAction !== undefined) {
       return;
     }
 
@@ -177,49 +203,70 @@ export class PlayerController {
 
   public setFacingDirection(facing: FacingDirection): void {
     this.facing = facing;
-    this.sprite.setTexture(getPlayerTextureKey(this.facing, 'idle'));
+    if (this.activeAction === undefined) {
+      this.playLocomotionAnimation('player.idle');
+    }
     this.writeDebugState();
   }
 
-  public async playActionAnimation(): Promise<void> {
-    if (this.destroyed || this.actionAnimating) {
-      return;
+  public async playActionAnimation(
+    animationId: PlayerAnimationId,
+    onImpact: PlayerActionImpact,
+  ): Promise<boolean> {
+    const animation = PLAYER_ANIMATIONS[animationId];
+    if (
+      this.destroyed ||
+      this.activeAction !== undefined ||
+      animation.impactFrameIndex === null
+    ) {
+      return false;
     }
 
-    this.actionAnimating = true;
+    this.cancelAutoMove('replaced');
     this.sprite.setVelocity(0, 0);
-    this.writeDebugState();
 
-    try {
-      if (prefersReducedMotion()) {
-        return;
+    if (prefersReducedMotion()) {
+      const impactFrameIndex = animation.impactFrameIndex;
+      this.sprite.anims.stop();
+      this.sprite.setFrame(
+        getPlayerFrameAddress(animationId, this.facing, impactFrameIndex)
+          .stableFrameKey,
+      );
+      this.actionImpactDispatchCount += 1;
+      this.writeDebugState(animationId);
+      await onImpact();
+      if (this.canResumeAfterAction()) {
+        this.playLocomotionAnimation('player.idle');
+        this.writeDebugState();
       }
-
-      await new Promise<void>((resolve) => {
-        this.scene.tweens.add({
-          targets: this.sprite,
-          scaleX: 1.08,
-          scaleY: 0.9,
-          duration: ACTION_TWEEN_DURATION_MS,
-          ease: 'Sine.easeInOut',
-          yoyo: true,
-          onComplete: () => {
-            resolve();
-          },
-          onStop: () => {
-            resolve();
-          },
-        });
-      });
-    } finally {
-      this.sprite.setScale(1);
-      this.actionAnimating = false;
-      this.writeDebugState();
+      return this.canResumeAfterAction();
     }
+
+    const result = new Promise<boolean>((resolve, reject) => {
+      this.activeAction = {
+        animationId,
+        timeline: createPlayerAnimationTimeline(animationId),
+        impactSettled: false,
+        visualCompleted: false,
+        onImpact,
+        resolve,
+        reject,
+      };
+    });
+    this.sprite.play(getPlayerAnimationKey(animationId, this.facing), true);
+    this.writeDebugState(animationId);
+    return result;
   }
 
   public update(deltaMs: number): void {
     if (this.destroyed) {
+      return;
+    }
+
+    if (this.activeAction !== undefined) {
+      this.updateActiveAction(deltaMs);
+      this.updateDepthAndShadow();
+      this.writeDebugState();
       return;
     }
 
@@ -235,40 +282,31 @@ export class PlayerController {
       this.cancelAutoMove('manual_input');
     }
 
-    let movement = manualMovement;
-    if (this.actionAnimating) {
-      movement = { x: 0, y: 0 };
-    } else if (!manualMoving && this.autoMove !== undefined) {
-      movement = this.resolveAutoMovement(deltaMs);
-    }
-
+    const movement =
+      !manualMoving && this.autoMove !== undefined
+        ? this.resolveAutoMovement(deltaMs)
+        : manualMovement;
     const moving = isMoving(movement);
-    this.facing = resolveFacingDirection(movement, this.facing);
+    const nextFacing = resolveFacingDirection(movement, this.facing);
+    const facingChanged = nextFacing !== this.facing;
+    this.facing = nextFacing;
     this.sprite.setVelocity(
       movement.x * PLAYER_SPEED,
       movement.y * PLAYER_SPEED,
     );
 
-    if (moving) {
-      this.walkElapsedMs += deltaMs;
-
-      if (this.walkElapsedMs >= WALK_FRAME_DURATION_MS) {
-        this.walkElapsedMs %= WALK_FRAME_DURATION_MS;
-        this.walkFrame = this.walkFrame === 'walk-a' ? 'walk-b' : 'walk-a';
-      }
-
-      this.sprite.setTexture(getPlayerTextureKey(this.facing, this.walkFrame));
-    } else {
-      this.walkElapsedMs = 0;
-      this.walkFrame = 'walk-a';
-      this.sprite.setTexture(getPlayerTextureKey(this.facing, 'idle'));
+    const locomotionAnimation: PlayerAnimationId = moving
+      ? 'player.walk'
+      : 'player.idle';
+    if (
+      facingChanged ||
+      this.sprite.anims.currentAnim?.key !==
+        getPlayerAnimationKey(locomotionAnimation, this.facing)
+    ) {
+      this.playLocomotionAnimation(locomotionAnimation);
     }
 
-    this.sprite.setDepth(Math.round(this.sprite.y));
-    this.shadow
-      .setPosition(this.sprite.x, this.sprite.y - 3)
-      .setDepth(Math.round(this.sprite.y) - 1);
-
+    this.updateDepthAndShadow();
     this.writeDebugState();
   }
 
@@ -280,14 +318,85 @@ export class PlayerController {
     this.destroyed = true;
     this.cancelAutoMove('destroyed');
     this.restartKey.off('down', this.handleRestart);
-    this.scene.tweens.killTweensOf(this.sprite);
+    this.sprite.anims.stop();
+    const activeAction = this.activeAction;
+    this.activeAction = undefined;
+    activeAction?.resolve(false);
     activeControllerCount -= 1;
     this.scene.game.canvas.dataset.activePlayerControllers = String(
       activeControllerCount,
     );
   }
 
-  private resolveAutoMovement(deltaMs: number): Readonly<{ x: number; y: number }> {
+  private canResumeAfterAction(): boolean {
+    return !this.destroyed;
+  }
+
+  private playLocomotionAnimation(animationId: 'player.idle' | 'player.walk'): void {
+    this.sprite.play(getPlayerAnimationKey(animationId, this.facing), true);
+  }
+
+  private updateActiveAction(deltaMs: number): void {
+    const active = this.activeAction;
+    if (active === undefined) {
+      return;
+    }
+
+    const advance = advancePlayerAnimationTimeline(active.timeline, deltaMs);
+    active.timeline = advance.state;
+    active.visualCompleted = advance.state.completed;
+
+    if (advance.impactDue) {
+      this.actionImpactDispatchCount += 1;
+      this.writeDebugState(active.animationId);
+      void active.onImpact().then(
+        () => {
+          if (this.activeAction !== active) {
+            return;
+          }
+          active.impactSettled = true;
+          this.finishActiveActionIfReady(active);
+        },
+        (reason: unknown) => {
+          if (this.activeAction !== active) {
+            return;
+          }
+          this.activeAction = undefined;
+          this.playLocomotionAnimation('player.idle');
+          active.reject(reason);
+          this.writeDebugState();
+        },
+      );
+    }
+
+    this.finishActiveActionIfReady(active);
+  }
+
+  private finishActiveActionIfReady(active: ActiveAction): void {
+    if (
+      this.activeAction !== active ||
+      !active.visualCompleted ||
+      !active.impactSettled
+    ) {
+      return;
+    }
+
+    this.activeAction = undefined;
+    this.playLocomotionAnimation('player.idle');
+    active.resolve(true);
+    this.writeDebugState();
+  }
+
+  private updateDepthAndShadow(): void {
+    this.sprite.setDepth(Math.round(this.sprite.y));
+    this.shadow
+      .setPosition(this.sprite.x, this.sprite.y - 3)
+      .setDepth(Math.round(this.sprite.y) - 1);
+  }
+
+  private resolveAutoMovement(
+    deltaMs: number,
+  ): Readonly<{ x: number; y: number }> {
     const active = this.autoMove;
     if (active === undefined) {
       return { x: 0, y: 0 };
@@ -316,7 +425,7 @@ export class PlayerController {
     });
   }
 
-  private writeDebugState(): void {
+  private writeDebugState(actionAnimationId?: PlayerAnimationId): void {
     const { canvas } = this.scene.game;
     const { main: camera } = this.scene.cameras;
     const body = this.sprite.body;
@@ -334,7 +443,27 @@ export class PlayerController {
     canvas.dataset.playerVelocityY = body.velocity.y.toFixed(2);
     canvas.dataset.playerFacing = this.facing;
     canvas.dataset.playerAutoMoving = String(this.autoMove !== undefined);
-    canvas.dataset.playerActionAnimating = String(this.actionAnimating);
+    canvas.dataset.playerActionAnimating = String(
+      this.activeAction !== undefined,
+    );
+    canvas.dataset.playerTextureKey = this.sprite.texture.key;
+    canvas.dataset.playerFrameKey = this.sprite.frame.name;
+    canvas.dataset.playerAnimationKey =
+      this.sprite.anims.currentAnim?.key ?? 'none';
+    canvas.dataset.playerOrigin = `${this.sprite.originX.toFixed(2)},${this.sprite.originY.toFixed(2)}`;
+    canvas.dataset.playerBody = `${String(PLAYER_BODY.width)}x${String(PLAYER_BODY.height)}@${String(PLAYER_BODY.offsetX)},${String(PLAYER_BODY.offsetY)}`;
+    canvas.dataset.playerFootY = String(PLAYER_FOOT_Y);
+    canvas.dataset.playerDepth = String(this.sprite.depth);
+    canvas.dataset.playerActionImpactDispatchCount = String(
+      this.actionImpactDispatchCount,
+    );
+    const effectiveActionAnimationId =
+      actionAnimationId ?? this.activeAction?.animationId;
+    if (effectiveActionAnimationId === undefined) {
+      delete canvas.dataset.playerActionAnimationId;
+    } else {
+      canvas.dataset.playerActionAnimationId = effectiveActionAnimationId;
+    }
     if (this.autoMove === undefined) {
       delete canvas.dataset.playerAutoTargetX;
       delete canvas.dataset.playerAutoTargetY;

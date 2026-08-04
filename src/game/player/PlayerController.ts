@@ -17,6 +17,7 @@ import {
   getPlayerAnimationKey,
   RUNTIME_ART_TEXTURE_KEYS,
 } from '../assets/runtimeArtPack';
+import { stopAnimationOnShutdown } from './shutdownSafeAnimation';
 import {
   advancePlayerAnimationTimeline,
   createPlayerAnimationTimeline,
@@ -318,7 +319,8 @@ export class PlayerController {
     this.destroyed = true;
     this.cancelAutoMove('destroyed');
     this.restartKey.off('down', this.handleRestart);
-    this.sprite.anims.stop();
+    // Phaser may release AnimationState before Scene SHUTDOWN listeners run.
+    stopAnimationOnShutdown(this.sprite);
     const activeAction = this.activeAction;
     this.activeAction = undefined;
     activeAction?.resolve(false);

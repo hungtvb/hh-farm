@@ -181,5 +181,6 @@ The running Phaser scene now consumes the generated source pack instead of rebui
 - farm crops resolve texture/frame keys from the authoritative crop ID and growth stage;
 - grass, water and wood frames decorate safe world positions without adding colliders or moving interaction targets;
 - deterministic canvas evidence exposes active texture, frame, animation, origin, body, foot anchor, depth and impact dispatch/commit counts.
+- shutdown cleanup tolerates Phaser releasing `AnimationState` before scene listeners run, so restart remains idempotent both while idle and before an action impact.
 
 The runtime integration preserves save schema, starter-grid IDs, target coordinates, keyboard movement, touch auto-approach, camera profiles and restart cleanup. Generated art is now visible in the playable game, but illustration quality and real-iPhone Safari acceptance remain human/device checks rather than automated claims.

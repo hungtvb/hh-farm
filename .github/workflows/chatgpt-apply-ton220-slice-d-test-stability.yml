@@ -1,0 +1,54 @@
+name: ChatGPT Apply TON-220 Test Stability
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton220-slice-d-test-stability.yml
+      - .github/chatgpt/ton220-restart-test.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode and verify test stability patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum .github/chatgpt/ton220-restart-test.patch.gz.b64 | awk '{print $1}')" = "7321deb13e072bd7944b9ac29a5461fc1a1d04d6beb809e7bbe1a53ac57ccd98"
+          base64 -d .github/chatgpt/ton220-restart-test.patch.gz.b64 > "$RUNNER_TEMP/restart-test.patch.gz"
+          test "$(sha256sum "$RUNNER_TEMP/restart-test.patch.gz" | awk '{print $1}')" = "656521c63b460c266110fc4840bb19893076786eb88dddcfe4a563e531582f72"
+          gzip -dc "$RUNNER_TEMP/restart-test.patch.gz" > "$RUNNER_TEMP/restart-test.patch"
+          test "$(sha256sum "$RUNNER_TEMP/restart-test.patch" | awk '{print $1}')" = "6765f205832cecccdb40aaeffcaa7dace444133c45e18e3cce60007757a6eaf5"
+
+      - name: Build exact stabilized tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
+          old_head="703419e5be0cd4baa772d439ea3865d517e364c2"
+          main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
+          git fetch origin "$feature_ref" refs/heads/main
+          test "$(git rev-parse origin/feat/ton-220-vertical-slice-art-pack)" = "$old_head"
+          test "$(git rev-parse origin/main)" = "$main_head"
+          git checkout --detach "$old_head"
+          git am "$RUNNER_TEMP/restart-test.patch"
+          test "$(git rev-parse HEAD^{tree})" = "6a9e5e793d4ee9d95f6a3c01d0d6562f0baf3aa5"
+
+      - name: Publish test stability repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push --force-with-lease=refs/heads/feat/ton-220-vertical-slice-art-pack:703419e5be0cd4baa772d439ea3865d517e364c2 origin HEAD:refs/heads/feat/ton-220-vertical-slice-art-pack

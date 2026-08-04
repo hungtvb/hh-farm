@@ -1,0 +1,61 @@
+name: ChatGPT Apply TON-220 Restart Repair
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton220-slice-d-restart.yml
+      - .github/chatgpt/ton220-slice-d-restart.part00
+      - .github/chatgpt/ton220-slice-d-restart.part01
+      - .github/chatgpt/ton220-slice-d-restart.part02
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Join and verify repair patch chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part00 | awk '{print $1}')" = "4076922689540eac97cb23bde9a253df7913f3578a68718f6355476fd7c6b8c3"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part01 | awk '{print $1}')" = "fb0a5aaa1a67d7bbfed39a8fbdf50c068c3b064bf6b18b9e350dfa9d4bf8d60d"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part02 | awk '{print $1}')" = "e7fb539af90dddcef33f5c02bbd865c529550fcd73559bde13015d331d53130a"
+          cat .github/chatgpt/ton220-slice-d-restart.part0* > "$RUNNER_TEMP/restart.patch.gz.b64"
+          base64 -d "$RUNNER_TEMP/restart.patch.gz.b64" > "$RUNNER_TEMP/restart.patch.gz"
+          test "$(sha256sum "$RUNNER_TEMP/restart.patch.gz" | awk '{print $1}')" = "fa986e90572c46f28e3c05f6a3045682d28d1c4d3db618363a1f0dddd15d79fa"
+          gzip -dc "$RUNNER_TEMP/restart.patch.gz" > "$RUNNER_TEMP/restart.patch"
+          test "$(sha256sum "$RUNNER_TEMP/restart.patch" | awk '{print $1}')" = "1023dc1779d46c85cc304b1261428b11c4d9d815f7b3dc1f0e7590eb3bfacb7e"
+
+      - name: Build exact repaired tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
+          old_head="7eaba7de3c4919f2344a204874115d48c946b972"
+          main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
+          git fetch origin "$feature_ref" refs/heads/main
+          test "$(git rev-parse origin/feat/ton-220-vertical-slice-art-pack)" = "$old_head"
+          test "$(git rev-parse origin/main)" = "$main_head"
+          git checkout --detach "$old_head"
+          git apply --index "$RUNNER_TEMP/restart.patch"
+          test "$(git write-tree)" = "cbd6e5c270c4106ae502a9cfa2324a6ba11fd4b3"
+
+      - name: Publish restart cleanup repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m "fix: make TON-220 restart cleanup shutdown-safe (#38)"
+          test "$(git rev-parse HEAD^{tree})" = "cbd6e5c270c4106ae502a9cfa2324a6ba11fd4b3"
+          git push --force-with-lease=refs/heads/feat/ton-220-vertical-slice-art-pack:7eaba7de3c4919f2344a204874115d48c946b972 origin HEAD:refs/heads/feat/ton-220-vertical-slice-art-pack

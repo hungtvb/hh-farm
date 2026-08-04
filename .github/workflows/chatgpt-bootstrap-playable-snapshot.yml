@@ -1,0 +1,74 @@
+name: ChatGPT Bootstrap Playable Snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-bootstrap-playable-snapshot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Lock exact verified main source
+        env:
+          EXPECTED_MAIN_SHA: 2c5a8631a3c52c10652d951e349f4cfa7259cb10
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN_SHA"
+          git checkout --detach "$EXPECTED_MAIN_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Build exact portable snapshot
+        env:
+          HH_FARM_GIT_SHA: 2c5a8631a3c52c10652d951e349f4cfa7259cb10
+          HH_FARM_GIT_REF: main
+          HH_FARM_DEPLOYMENT_ENVIRONMENT: production
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run verify:production-bundle
+          find dist -name '*.map' -delete
+          touch dist/.nojekyll
+
+      - name: Publish playable branch
+        id: publish
+        run: |
+          set -euo pipefail
+          cp -a dist "$RUNNER_TEMP/playable-dist"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan playable
+          git rm -rf .
+          cp -a "$RUNNER_TEMP/playable-dist"/. .
+          git add --all
+          git commit -m "deploy: playable snapshot 2c5a8631a3c52c10652d951e349f4cfa7259cb10"
+          SNAPSHOT_SHA="$(git rev-parse HEAD)"
+          git push --force origin HEAD:playable
+          echo "snapshot_sha=$SNAPSHOT_SHA" >> "$GITHUB_OUTPUT"
+          echo "url=https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${SNAPSHOT_SHA}/index.html" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test immutable playable URL
+        env:
+          SNAPSHOT_SHA: ${{ steps.publish.outputs.snapshot_sha }}
+        run: |
+          BASE_URL="https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${SNAPSHOT_SHA}/"
+          node scripts/verify-pages-deployment.mjs "$BASE_URL" 2c5a8631a3c52c10652d951e349f4cfa7259cb10 production
+          echo "Playable URL: ${{ steps.publish.outputs.url }}"

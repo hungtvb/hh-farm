@@ -28,15 +28,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(sha256sum .github/chatgpt/ton220-slice-d.part00 | awk '{print $1}')" = "2aaf6d1c204146d2a875123e8a1563a2dd0264f015656c6542713a50e9ec751e"
-          test "$(sha256sum .github/chatgpt/ton220-slice-d.part01 | awk '{print $1}')" = "dafb36a16366c9078aff6b4c0be09218e8c3b144f428c54f1d050013928d0923"
-          test "$(sha256sum .github/chatgpt/ton220-slice-d.part02 | awk '{print $1}')" = "0185a73b2622ad1221f9568c6ebca7f5f434d606a1a594fd0ce0c2b9db706282"
-          test "$(sha256sum .github/chatgpt/ton220-slice-d.part03 | awk '{print $1}')" = "2e28100f2a8388119c8d91cdf69ace1030f503bd736ca00cca7648aff873a194"
+          actual00="$(sha256sum .github/chatgpt/ton220-slice-d.part00 | awk '{print $1}')"
+          actual01="$(sha256sum .github/chatgpt/ton220-slice-d.part01 | awk '{print $1}')"
+          actual02="$(sha256sum .github/chatgpt/ton220-slice-d.part02 | awk '{print $1}')"
+          actual03="$(sha256sum .github/chatgpt/ton220-slice-d.part03 | awk '{print $1}')"
+          echo "part00=$actual00"
+          echo "part01=$actual01"
+          echo "part02=$actual02"
+          echo "part03=$actual03"
+          test "$actual00" = "2aaf6d1c204146d2a875123e8a1563a2dd0264f015656c6542713a50e9ec751e"
+          test "$actual01" = "dafb36a16366c9078aff6b4c0be09218e8c3b144f428c54f1d050013928d0923"
+          test "$actual02" = "0185a73b2622ad1221f9568c6ebca7f5f434d606a1a594fd0ce0c2b9db706282"
+          test "$actual03" = "2e28100f2a8388119c8d91cdf69ace1030f503bd736ca00cca7648aff873a194"
           cat .github/chatgpt/ton220-slice-d.part0* > "$RUNNER_TEMP/ton220-slice-d.patch.gz.b64"
           base64 -d "$RUNNER_TEMP/ton220-slice-d.patch.gz.b64" > "$RUNNER_TEMP/ton220-slice-d.patch.gz"
-          test "$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch.gz" | awk '{print $1}')" = "12d261ab193d3ab6905a62c5a58e1de0dd8d9549b736e14bab2a686eef500aea"
+          gzip_sha="$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch.gz" | awk '{print $1}')"
+          echo "gzip=$gzip_sha"
+          test "$gzip_sha" = "12d261ab193d3ab6905a62c5a58e1de0dd8d9549b736e14bab2a686eef500aea"
           gzip -dc "$RUNNER_TEMP/ton220-slice-d.patch.gz" > "$RUNNER_TEMP/ton220-slice-d.patch"
-          test "$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch" | awk '{print $1}')" = "d89a5461f39acde7fd78e13d01c457b7133eeecf5f8539498b153632acaca529"
+          patch_sha="$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch" | awk '{print $1}')"
+          echo "patch=$patch_sha"
+          test "$patch_sha" = "d89a5461f39acde7fd78e13d01c457b7133eeecf5f8539498b153632acaca529"
 
       - name: Build exact Slice D tree
         shell: bash

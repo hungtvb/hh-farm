@@ -1,0 +1,71 @@
+name: ChatGPT Apply TON-220 Slice D
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chatgpt-apply-ton220-slice-d.yml
+      - .github/chatgpt/ton220-slice-d.part00a
+      - .github/chatgpt/ton220-slice-d.part00b
+      - .github/chatgpt/ton220-slice-d.part01
+      - .github/chatgpt/ton220-slice-d.part02
+      - .github/chatgpt/ton220-slice-d.part03
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Join and verify patch chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum .github/chatgpt/ton220-slice-d.part00a | awk '{print $1}')" = "4b5940f313af877a489e5dd0da70054aa8c71578ffca1dc0a5cdb708ae42739b"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d.part00b | awk '{print $1}')" = "45b76f1bd1bbf44df3e28034d37d4cd6d1b98e59567927416b353ad539a29bfa"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d.part01 | awk '{print $1}')" = "dafb36a16366c9078aff6b4c0be09218e8c3b144f428c54f1d050013928d0923"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d.part02 | awk '{print $1}')" = "0185a73b2622ad1221f9568c6ebca7f5f434d606a1a594fd0ce0c2b9db706282"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d.part03 | awk '{print $1}')" = "2e28100f2a8388119c8d91cdf69ace1030f503bd736ca00cca7648aff873a194"
+          cat \
+            .github/chatgpt/ton220-slice-d.part00a \
+            .github/chatgpt/ton220-slice-d.part00b \
+            .github/chatgpt/ton220-slice-d.part01 \
+            .github/chatgpt/ton220-slice-d.part02 \
+            .github/chatgpt/ton220-slice-d.part03 \
+            > "$RUNNER_TEMP/ton220-slice-d.patch.gz.b64"
+          base64 -d "$RUNNER_TEMP/ton220-slice-d.patch.gz.b64" > "$RUNNER_TEMP/ton220-slice-d.patch.gz"
+          test "$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch.gz" | awk '{print $1}')" = "12d261ab193d3ab6905a62c5a58e1de0dd8d9549b736e14bab2a686eef500aea"
+          gzip -dc "$RUNNER_TEMP/ton220-slice-d.patch.gz" > "$RUNNER_TEMP/ton220-slice-d.patch"
+          test "$(sha256sum "$RUNNER_TEMP/ton220-slice-d.patch" | awk '{print $1}')" = "d89a5461f39acde7fd78e13d01c457b7133eeecf5f8539498b153632acaca529"
+
+      - name: Build exact Slice D tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
+          old_head="b7642bf9c49b3c0846a4431e9a55027f9d6e7e94"
+          main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
+          git fetch origin "$feature_ref" refs/heads/main
+          test "$(git rev-parse origin/feat/ton-220-vertical-slice-art-pack)" = "$old_head"
+          test "$(git rev-parse origin/main)" = "$main_head"
+          git checkout --detach "$old_head"
+          git apply --index "$RUNNER_TEMP/ton220-slice-d.patch"
+          test "$(git write-tree)" = "ef91e3639762b95c72817fc5eff0366ed30a1db5"
+
+      - name: Publish TON-220 Slice D
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m "feat: integrate TON-220 source packs into runtime (#38)"
+          test "$(git rev-parse HEAD^{tree})" = "ef91e3639762b95c72817fc5eff0366ed30a1db5"
+          git push --force-with-lease=refs/heads/feat/ton-220-vertical-slice-art-pack:b7642bf9c49b3c0846a4431e9a55027f9d6e7e94 origin HEAD:refs/heads/feat/ton-220-vertical-slice-art-pack

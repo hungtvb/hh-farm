@@ -339,15 +339,16 @@ test('cancels a pre-impact action on restart without committing domain state', a
     canvas,
     'data-scene-instance',
   );
-  await page.keyboard.down('KeyE');
-  await page.waitForFunction(
+  const actionStarted = page.waitForFunction(
     () =>
       document.querySelector('canvas[data-scene="farm"]')?.getAttribute(
         'data-player-action-animating',
       ) === 'true',
     undefined,
-    { polling: 10, timeout: 120 },
+    { polling: 10, timeout: 1_000 },
   );
+  await page.keyboard.down('KeyE');
+  await actionStarted;
   await page.keyboard.down('KeyR');
   await page.waitForTimeout(10);
   await page.keyboard.up('KeyR');

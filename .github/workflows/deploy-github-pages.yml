@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: github-pages
@@ -66,6 +67,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -93,3 +96,42 @@ jobs:
             echo "- Source commit: \`$SOURCE_SHA\`"
             echo "- Live smoke test: passed"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  report:
+    if: always()
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Report deployment evidence to issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [[ "$BUILD_RESULT" == "success" && "$DEPLOY_RESULT" == "success" ]]; then
+            STATUS="success"
+          else
+            STATUS="failure"
+          fi
+          {
+            echo "## GitHub Pages deployment: $STATUS"
+            echo
+            echo "- Build: \`$BUILD_RESULT\`"
+            echo "- Deploy + live smoke: \`$DEPLOY_RESULT\`"
+            echo "- Source commit: \`$SOURCE_SHA\`"
+            if [[ -n "$PAGE_URL" ]]; then
+              echo "- Playable URL: $PAGE_URL"
+            else
+              echo "- Playable URL: unavailable"
+            fi
+            echo "- Workflow run: $RUN_URL"
+          } > "$RUNNER_TEMP/pages-report.md"
+          gh issue comment 45 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/pages-report.md"

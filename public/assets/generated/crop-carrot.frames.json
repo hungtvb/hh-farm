@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "textureId": "crop.carrot.stages",
+  "sourceFile": "crop-carrot.svg",
+  "kind": "crop-stage-sheet",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 4,
+  "rows": 1,
+  "totalFrames": 4,
+  "usedFrames": 4,
+  "frames": [
+    {
+      "stableFrameKey": "crop.carrot.stage.00",
+      "stage": 0,
+      "index": 0,
+      "column": 0,
+      "row": 0,
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 26,
+        "y": 24,
+        "width": 12,
+        "height": 29
+      },
+      "occupancy": 0.098
+    },
+    {
+      "stableFrameKey": "crop.carrot.stage.01",
+      "stage": 1,
+      "index": 1,
+      "column": 1,
+      "row": 0,
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 21,
+        "y": 16,
+        "width": 22,
+        "height": 39
+      },
+      "occupancy": 0.178
+    },
+    {
+      "stableFrameKey": "crop.carrot.stage.02",
+      "stage": 2,
+      "index": 2,
+      "column": 2,
+      "row": 0,
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 17,
+        "y": 10,
+        "width": 30,
+        "height": 47
+      },
+      "occupancy": 0.294
+    },
+    {
+      "stableFrameKey": "crop.carrot.stage.03",
+      "stage": 3,
+      "index": 3,
+      "column": 3,
+      "row": 0,
+      "x": 192,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 12,
+        "y": 6,
+        "width": 40,
+        "height": 54
+      },
+      "occupancy": 0.452
+    }
+  ]
+}

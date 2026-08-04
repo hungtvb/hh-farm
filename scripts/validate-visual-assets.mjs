@@ -37,6 +37,16 @@ for (const entry of manifest.entries) {
   }
 
   totalBytes += fileStat.size;
+
+  if (entry.metadataFile !== undefined) {
+    if (!/^[a-z0-9-]+\.frames\.json$/.test(entry.metadataFile)) {
+      throw new Error(`Invalid metadata filename: ${entry.metadataFile}`);
+    }
+    const metadataPath = path.join(outputDir, entry.metadataFile);
+    const metadataStat = await stat(metadataPath);
+    JSON.parse(await readFile(metadataPath, 'utf8'));
+    totalBytes += metadataStat.size;
+  }
 }
 
 if (totalBytes > manifest.budgetBytes) {

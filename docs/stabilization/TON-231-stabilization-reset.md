@@ -113,3 +113,9 @@ Tracking issue: https://github.com/hungtvb/hh-farm/issues/27
 - World-first persistence assertions track the exact tilled-tile count and action tile ID instead of reading the legacy tutorial tile projection; the desktop west-bound collision wait uses a CI-safe bound while retaining the same collision threshold.
 
 This is a layout stabilization slice, not final art polish. Inventory, shop and settings remain modal sheets, and real iPhone Safari safe-area/browser-chrome validation is still required.
+
+### TON-220 Slice D — contract-driven runtime art integration
+
+Draft PR #16 now loads the validated player/environment/crop source pack through `PreloadScene`. Phaser named frames are derived from generated metadata, the player uses contract-driven animations and geometry, and domain actions commit exactly once at the animation impact boundary. Crop presentation follows authoritative crop IDs/stages; environment decorations do not alter collision or interaction geometry.
+
+Browser evidence records the active player texture/frame/animation, origin/body/foot anchor/depth, environment frames, crop frame and independent impact-dispatch/domain-commit counters. Scene shutdown cleanup is explicitly safe after Phaser has already released the sprite animation state, preserving idle restart and pre-impact cancellation. Real-device Safari and final illustration quality remain outside automated acceptance.

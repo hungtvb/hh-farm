@@ -51,6 +51,26 @@ async function openFarm(page: Page): Promise<Locator> {
   await expect(canvas).toHaveAttribute('data-dynamic-body-count', '1');
   await expect(canvas).toHaveAttribute('data-static-body-count', '3');
   await expect(canvas).toHaveAttribute('data-world-farm-tile-count', '15');
+  await expect(canvas).toHaveAttribute('data-art-pack-runtime', 'source-pack-v1');
+  await expect(canvas).toHaveAttribute('data-art-pack-player-frame-count', '104');
+  await expect(canvas).toHaveAttribute(
+    'data-art-pack-environment-frame-count',
+    '12',
+  );
+  await expect(canvas).toHaveAttribute('data-art-pack-crop-frame-count', '12');
+  await expect(canvas).toHaveAttribute('data-runtime-art-frame-count', '128');
+  await expect(canvas).toHaveAttribute(
+    'data-player-texture-key',
+    'runtime-art-player',
+  );
+  await expect(canvas).toHaveAttribute(
+    'data-player-animation-key',
+    'runtime:player.idle:down',
+  );
+  await expect(canvas).toHaveAttribute('data-player-origin', '0.50,1.00');
+  await expect(canvas).toHaveAttribute('data-player-body', '24x14@20,62');
+  await expect(canvas).toHaveAttribute('data-player-foot-y', '72');
+  await expect(canvas).toHaveAttribute('data-environment-decoration-count', '7');
 
   return canvas;
 }
@@ -117,6 +137,10 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
   const startCameraX = await readNumberAttribute(canvas, 'data-camera-x');
 
   await page.keyboard.down('ArrowRight');
+  await expect(canvas).toHaveAttribute(
+    'data-player-animation-key',
+    'runtime:player.walk:right',
+  );
   await expect
     .poll(() => readNumberAttribute(canvas, 'data-player-x'), {
       timeout: 4_000,
@@ -126,6 +150,10 @@ test('moves, stops, collides, follows and restarts cleanly', async ({ page }) =>
 
   await expect(canvas).toHaveAttribute('data-player-facing', 'right');
   await expect(canvas).toHaveAttribute('data-player-velocity-x', '0.00');
+  await expect(canvas).toHaveAttribute(
+    'data-player-animation-key',
+    'runtime:player.idle:right',
+  );
 
   const movedX = await readNumberAttribute(canvas, 'data-player-x');
   const movedCameraX = await readNumberAttribute(canvas, 'data-camera-x');
@@ -300,6 +328,48 @@ async function moveToShippingBin(page: Page, canvas: Locator): Promise<void> {
   );
 }
 
+test('cancels a pre-impact action on restart without committing domain state', async ({
+  page,
+}) => {
+  const runtimeErrors = collectRuntimeErrors(page);
+  const canvas = await openFarm(page);
+  await moveToFarmTile(page, canvas, 'starter-plot:-1:0');
+
+  const previousSceneInstance = await readNumberAttribute(
+    canvas,
+    'data-scene-instance',
+  );
+  const actionStarted = page.waitForFunction(
+    () =>
+      document.querySelector('canvas[data-scene="farm"]')?.getAttribute(
+        'data-player-action-animating',
+      ) === 'true',
+    undefined,
+    { polling: 10, timeout: 1_000 },
+  );
+  await page.keyboard.down('KeyE');
+  await actionStarted;
+  await page.keyboard.down('KeyR');
+  await page.waitForTimeout(10);
+  await page.keyboard.up('KeyR');
+  await page.keyboard.up('KeyE');
+
+  await expect
+    .poll(() => readNumberAttribute(canvas, 'data-scene-instance'))
+    .toBe(previousSceneInstance + 1);
+  await page.waitForTimeout(500);
+  await expect(canvas).toHaveAttribute('data-world-tilled-tile-count', '0');
+  await expect(canvas).toHaveAttribute(
+    'data-world-action-impact-commit-count',
+    '0',
+  );
+  await expect(canvas).toHaveAttribute(
+    'data-player-action-impact-dispatch-count',
+    '0',
+  );
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('completes the crop loop through farm, bed and shipping-bin targets', async ({
   page,
 }) => {
@@ -312,7 +382,7 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
     'data-visual-prototype',
     'authoritative-farm-grid',
   );
-  await expect(canvas).toHaveAttribute('data-visual-asset-count', '5');
+  await expect(canvas).toHaveAttribute('data-visual-asset-count', '13');
   await expect(canvas).toHaveAttribute(
     'data-world-interaction-object-count',
     '2',
@@ -331,6 +401,14 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
     interactionKind: string,
     expectedDomainTileId?: string,
   ): Promise<void> => {
+    const impactCommitCountBefore = await readNumberAttribute(
+      canvas,
+      'data-world-action-impact-commit-count',
+    );
+    const impactDispatchCountBefore = await readNumberAttribute(
+      canvas,
+      'data-player-action-impact-dispatch-count',
+    );
     await page.keyboard.press('KeyE');
     await expect(canvas).toHaveAttribute(
       'data-world-last-action',
@@ -357,6 +435,20 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
       'data-world-tutorial-step',
       expectedStep,
     );
+    await expect
+      .poll(() =>
+        readNumberAttribute(canvas, 'data-world-action-impact-commit-count'),
+      )
+      .toBe(impactCommitCountBefore + 1);
+    await expect
+      .poll(() =>
+        readNumberAttribute(
+          canvas,
+          'data-player-action-impact-dispatch-count',
+        ),
+      )
+      .toBe(impactDispatchCountBefore + 1);
+    await expect(canvas).toHaveAttribute('data-player-action-animating', 'false');
   };
 
   await actAtTarget('plant', 'till', targetTileId, 'farm_tile', targetTileId);
@@ -366,6 +458,14 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
 
   await actAtTarget('water', 'plant', targetTileId, 'farm_tile', targetTileId);
   await expect(canvas).toHaveAttribute('data-world-target-crop-stage', '0');
+  await expect(canvas).toHaveAttribute(
+    'data-world-crop-texture-key',
+    'runtime-art-crop-turnip',
+  );
+  await expect(canvas).toHaveAttribute(
+    'data-world-crop-frame-key',
+    'crop.turnip.stage.00',
+  );
   await expect(canvas).toHaveAttribute(
     'data-world-guided-crop-tile-id',
     targetTileId,
@@ -406,6 +506,14 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
   }
 
   await expect(canvas).toHaveAttribute('data-world-target-crop-stage', '3');
+  await expect(canvas).toHaveAttribute(
+    'data-world-crop-frame-key',
+    'crop.turnip.stage.03',
+  );
+  await page.screenshot({
+    path: 'test-results/runtime-art-crop-stage3-desktop.png',
+    fullPage: true,
+  });
   await actAtTarget('sell', 'harvest', targetTileId, 'farm_tile', targetTileId);
   await expect(canvas).toHaveAttribute('data-world-target-crop-stage', 'none');
   await expect(canvas).toHaveAttribute('data-world-action-ready', 'false');
@@ -423,6 +531,10 @@ test('completes the crop loop through farm, bed and shipping-bin targets', async
     'shipping_bin',
   );
   await expect(canvas).toHaveAttribute('data-world-coins', '285');
+  await expect(canvas).toHaveAttribute(
+    'data-world-action-impact-commit-count',
+    '10',
+  );
 
   await page.reload();
   const restoredCanvas = await openFarm(page);
@@ -489,6 +601,10 @@ test.describe('mobile-first direct manipulation', () => {
     targetId: string,
     nextStep: string,
   ): Promise<void> {
+    const impactCommitCountBefore = await readNumberAttribute(
+      canvas,
+      'data-world-action-impact-commit-count',
+    );
     await tapWorldPoint(page, canvas, worldX, worldY);
     await expect(canvas).toHaveAttribute('data-world-tap-result', 'accepted');
     await expect(canvas).toHaveAttribute('data-world-tap-target-id', targetId);
@@ -498,6 +614,11 @@ test.describe('mobile-first direct manipulation', () => {
       { timeout: 10_000 },
     );
     await expect(canvas).toHaveAttribute('data-player-auto-moving', 'false');
+    await expect
+      .poll(() =>
+        readNumberAttribute(canvas, 'data-world-action-impact-commit-count'),
+      )
+      .toBe(impactCommitCountBefore + 1);
   }
 
   test('completes the guided crop loop by tapping world targets', async ({
@@ -610,6 +731,10 @@ test.describe('mobile-first direct manipulation', () => {
     await expect(canvas).toHaveAttribute('data-world-coins', '285');
     await expect(canvas).toHaveAttribute('data-world-day', '4');
     await expect(canvas).toHaveAttribute(
+      'data-world-action-impact-commit-count',
+      '10',
+    );
+    await expect(canvas).toHaveAttribute(
       'data-world-last-interaction-id',
       binTarget.id,
     );
@@ -647,6 +772,11 @@ test.describe('mobile-first direct manipulation', () => {
           ? 'up'
           : 'down';
     expect(finalFacing).toBe(expectedFacing);
+
+    await page.screenshot({
+      path: 'test-results/runtime-art-mobile-completed.png',
+      fullPage: true,
+    });
 
     await page.screenshot({
       path: 'test-results/hh-farm-direct-touch-mobile.png',

@@ -25,10 +25,16 @@
     "tests",
     "src/application/**/*.ts",
     "src/domain/**/*.ts",
-    "src/data/**/*.ts"
+    "src/data/**/*.ts",
+    "src/game/assets/artPackContract.ts",
+    "src/game/assets/runtimeArtPackContract.ts",
+    "src/game/player/playerAnimationTimeline.ts",
+    "src/game/player/shutdownSafeAnimation.ts"
   ],
   "exclude": [
+    "scripts/generate-player-assets.mjs",
     "scripts/generate-visual-assets.mjs",
+    "scripts/validate-art-pack-contract.mjs",
     "scripts/validate-visual-assets.mjs"
   ]
 }

@@ -17,5 +17,5 @@ export function applyVisualSystem(root: HTMLElement): void {
 }
 
 export function getVisualAssetUrl(fileName: string): string {
-  return `/assets/generated/${fileName}`;
+  return `assets/generated/${fileName}`;
 }

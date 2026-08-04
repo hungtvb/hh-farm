@@ -6,7 +6,9 @@ on:
       - main
     paths:
       - .github/workflows/chatgpt-apply-ton220-slice-d-restart.yml
-      - .github/chatgpt/ton220-slice-d-restart.patch.gz.b64
+      - .github/chatgpt/ton220-slice-d-restart.part00
+      - .github/chatgpt/ton220-slice-d-restart.part01
+      - .github/chatgpt/ton220-slice-d-restart.part02
 
 permissions:
   contents: write
@@ -21,12 +23,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Decode and verify repair patch
+      - name: Join and verify repair patch chunks
         shell: bash
         run: |
           set -euo pipefail
-          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.patch.gz.b64 | awk '{print $1}')" = "4f8d07aef85a53197c119662ff981fcccd089df2f98e1eaa2b0790dc63850182"
-          base64 -d .github/chatgpt/ton220-slice-d-restart.patch.gz.b64 > "$RUNNER_TEMP/restart.patch.gz"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part00 | awk '{print $1}')" = "4076922689540eac97cb23bde9a253df7913f3578a68718f6355476fd7c6b8c3"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part01 | awk '{print $1}')" = "fb0a5aaa1a67d7bbfed39a8fbdf50c068c3b064bf6b18b9e350dfa9d4bf8d60d"
+          test "$(sha256sum .github/chatgpt/ton220-slice-d-restart.part02 | awk '{print $1}')" = "e7fb539af90dddcef33f5c02bbd865c529550fcd73559bde13015d331d53130a"
+          cat .github/chatgpt/ton220-slice-d-restart.part0* > "$RUNNER_TEMP/restart.patch.gz.b64"
+          base64 -d "$RUNNER_TEMP/restart.patch.gz.b64" > "$RUNNER_TEMP/restart.patch.gz"
           test "$(sha256sum "$RUNNER_TEMP/restart.patch.gz" | awk '{print $1}')" = "fa986e90572c46f28e3c05f6a3045682d28d1c4d3db618363a1f0dddd15d79fa"
           gzip -dc "$RUNNER_TEMP/restart.patch.gz" > "$RUNNER_TEMP/restart.patch"
           test "$(sha256sum "$RUNNER_TEMP/restart.patch" | awk '{print $1}')" = "1023dc1779d46c85cc304b1261428b11c4d9d815f7b3dc1f0e7590eb3bfacb7e"

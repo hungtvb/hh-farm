@@ -1,0 +1,92 @@
+name: Publish Playable Snapshot
+
+on:
+  workflow_run:
+    workflows:
+      - Verify
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+concurrency:
+  group: playable-snapshot
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout verified main commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build portable playable snapshot
+        env:
+          HH_FARM_GIT_SHA: ${{ github.event.workflow_run.head_sha }}
+          HH_FARM_GIT_REF: main
+          HH_FARM_DEPLOYMENT_ENVIRONMENT: production
+        run: |
+          npm run build
+          npm run verify:production-bundle
+          find dist -name '*.map' -delete
+          touch dist/.nojekyll
+
+      - name: Publish immutable snapshot branch
+        id: publish
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          cp -a dist "$RUNNER_TEMP/playable-dist"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan playable
+          git rm -rf .
+          cp -a "$RUNNER_TEMP/playable-dist"/. .
+          git add --all
+          git commit -m "deploy: playable snapshot $SOURCE_SHA"
+          SNAPSHOT_SHA="$(git rev-parse HEAD)"
+          git push --force origin HEAD:playable
+          echo "snapshot_sha=$SNAPSHOT_SHA" >> "$GITHUB_OUTPUT"
+          echo "url=https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${SNAPSHOT_SHA}/index.html" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test immutable CDN snapshot
+        env:
+          SNAPSHOT_SHA: ${{ steps.publish.outputs.snapshot_sha }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          BASE_URL="https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${SNAPSHOT_SHA}/"
+          node scripts/verify-pages-deployment.mjs "$BASE_URL" "$SOURCE_SHA" production
+
+      - name: Record playable URL
+        env:
+          PLAYABLE_URL: ${{ steps.publish.outputs.url }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          {
+            echo "## Playable HH Farm snapshot"
+            echo
+            echo "- Source commit: \`$SOURCE_SHA\`"
+            echo "- URL: $PLAYABLE_URL"
+            echo "- Smoke test: passed"
+          } >> "$GITHUB_STEP_SUMMARY"

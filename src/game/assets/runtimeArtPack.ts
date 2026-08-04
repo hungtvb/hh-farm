@@ -28,7 +28,7 @@ export type {
   RuntimeFrameSheetMetadata,
 } from './runtimeArtPackContract';
 
-const GENERATED_ASSET_BASE = '/assets/generated';
+const GENERATED_ASSET_BASE = 'assets/generated';
 const RUNTIME_ART_METADATA_KEYS = Object.freeze({
   player: 'runtime-art-player-metadata',
   environmentGrass: 'runtime-art-environment-grass-metadata',

@@ -2,6 +2,10 @@ const [deploymentUrlArgument, expectedSha, expectedEnvironment] =
   process.argv.slice(2);
 
 const deploymentUrl = new URL(deploymentUrlArgument);
+const deploymentBaseUrl = new URL(deploymentUrl);
+if (!deploymentBaseUrl.pathname.endsWith('/')) {
+  deploymentBaseUrl.pathname = `${deploymentBaseUrl.pathname}/`;
+}
 
 /**
  * @param {unknown} value
@@ -40,10 +44,10 @@ async function fetchRequired(url) {
 
   throw lastError instanceof Error
     ? lastError
-    : new Error(`Unable to fetch ${deploymentUrl.href}.`);
+    : new Error(`Unable to fetch ${deploymentBaseUrl.href}.`);
 }
 
-const indexResponse = await fetchRequired(new URL('/', deploymentUrl));
+const indexResponse = await fetchRequired(deploymentBaseUrl);
 const indexHtml = await indexResponse.text();
 
 if (!indexHtml.includes('<div id="game-root"></div>')) {
@@ -51,7 +55,7 @@ if (!indexHtml.includes('<div id="game-root"></div>')) {
 }
 
 const versionResponse = await fetchRequired(
-  new URL('/version.json', deploymentUrl),
+  new URL('version.json', deploymentBaseUrl),
 );
 /** @type {unknown} */
 const versionMetadata = JSON.parse(await versionResponse.text());
@@ -72,7 +76,7 @@ if (versionMetadata.deploymentEnvironment !== expectedEnvironment) {
   );
 }
 
-await fetchRequired(new URL('/maps/farm-test.json', deploymentUrl));
+await fetchRequired(new URL('maps/farm-test.json', deploymentBaseUrl));
 
 /** @type {Set<string>} */
 const assetReferences = new Set();
@@ -82,7 +86,7 @@ for (const match of indexHtml.matchAll(assetPattern)) {
   const assetPath = match[1];
 
   if (!assetPath.startsWith('data:')) {
-    assetReferences.add(new URL(assetPath, deploymentUrl).href);
+    assetReferences.add(new URL(assetPath, deploymentBaseUrl).href);
   }
 }
 
@@ -95,5 +99,5 @@ for (const assetUrl of assetReferences) {
 }
 
 console.log(
-  `Verified ${deploymentUrl.href}: ${expectedEnvironment} build ${expectedSha} and ${String(assetReferences.size)} referenced assets loaded.`,
+  `Verified ${deploymentBaseUrl.href}: ${expectedEnvironment} build ${expectedSha} and ${String(assetReferences.size)} referenced assets loaded.`,
 );

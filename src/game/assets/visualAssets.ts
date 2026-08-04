@@ -9,7 +9,7 @@ export const VISUAL_TEXTURE_KEYS = Object.freeze({
   worldShippingBin: 'visual-world-shipping-bin',
 });
 
-const GENERATED_ASSET_BASE = '/assets/generated';
+const GENERATED_ASSET_BASE = 'assets/generated';
 const SVG_SIZE = Object.freeze({ width: 64, height: 64 });
 
 export function preloadVisualAssets(scene: Phaser.Scene): void {

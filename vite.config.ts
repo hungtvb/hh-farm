@@ -101,6 +101,7 @@ export default defineConfig(({ mode }) => {
   const buildInfo = resolveBuildInfo(mode);
 
   return {
+    base: './',
     define: {
       __HH_FARM_BUILD_INFO__: JSON.stringify(buildInfo),
     },

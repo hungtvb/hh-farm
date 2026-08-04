@@ -1,0 +1,95 @@
+name: Deploy GitHub Pages
+
+on:
+  workflow_run:
+    workflows:
+      - Verify
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact verified main commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build exact verified production snapshot
+        env:
+          HH_FARM_GIT_SHA: ${{ github.event.workflow_run.head_sha }}
+          HH_FARM_GIT_REF: main
+          HH_FARM_DEPLOYMENT_ENVIRONMENT: production
+          HH_FARM_DEPLOYMENT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          npm run build
+          npm run verify:production-bundle
+          find dist -name '*.map' -delete
+          touch dist/.nojekyll
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Checkout deployment verifier
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Verify live playable URL
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          node scripts/verify-pages-deployment.mjs "$PAGE_URL" "$SOURCE_SHA" production
+          {
+            echo "## HH Farm playable"
+            echo
+            echo "- URL: $PAGE_URL"
+            echo "- Source commit: \`$SOURCE_SHA\`"
+            echo "- Live smoke test: passed"
+          } >> "$GITHUB_STEP_SUMMARY"

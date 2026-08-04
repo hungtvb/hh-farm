@@ -38,6 +38,8 @@ jobs:
           feature_ref="refs/heads/feat/ton-220-vertical-slice-art-pack"
           old_head="703419e5be0cd4baa772d439ea3865d517e364c2"
           main_head="b3731d03d1134f908c8b24702bf290c745af0755"
+          git config user.name "chatgpt-sandbox"
+          git config user.email "chatgpt-sandbox@users.noreply.github.com"
           git fetch origin "$feature_ref" refs/heads/main
           test "$(git rev-parse origin/feat/ton-220-vertical-slice-art-pack)" = "$old_head"
           test "$(git rev-parse origin/main)" = "$main_head"

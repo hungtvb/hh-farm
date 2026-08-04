@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/generate-visual-assets.mjs + scripts/generate-player-assets.mjs",
+  "budgetBytes": 420000,
+  "entries": [
+    {
+      "id": "ui.coin",
+      "file": "icon-coin.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "ui.energy",
+      "file": "icon-energy.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "ui.weather.sun",
+      "file": "icon-sun.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "tool.hoe",
+      "file": "tool-hoe.svg",
+      "anchor": "bottom-center"
+    },
+    {
+      "id": "tool.watering-can",
+      "file": "tool-watering-can.svg",
+      "anchor": "bottom-center"
+    },
+    {
+      "id": "soil.untilled",
+      "file": "soil-untilled.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "soil.tilled",
+      "file": "soil-tilled.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "soil.watered",
+      "file": "soil-watered.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "ui.selection",
+      "file": "selection-cursor.svg",
+      "anchor": "center"
+    },
+    {
+      "id": "crop.turnip.stages",
+      "file": "crop-turnip.svg",
+      "anchor": "bottom-center",
+      "metadataFile": "crop-turnip.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "crop.carrot.stages",
+      "file": "crop-carrot.svg",
+      "anchor": "bottom-center",
+      "metadataFile": "crop-carrot.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "crop.strawberry.stages",
+      "file": "crop-strawberry.svg",
+      "anchor": "bottom-center",
+      "metadataFile": "crop-strawberry.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.grass",
+      "file": "environment-grass.svg",
+      "anchor": "center",
+      "metadataFile": "environment-grass.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.water",
+      "file": "environment-water.svg",
+      "anchor": "center",
+      "metadataFile": "environment-water.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.wood",
+      "file": "environment-wood.svg",
+      "anchor": "center",
+      "metadataFile": "environment-wood.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "world.bed",
+      "file": "world-bed.svg",
+      "anchor": "bottom-center"
+    },
+    {
+      "id": "world.shipping-bin",
+      "file": "world-shipping-bin.svg",
+      "anchor": "bottom-center"
+    },
+    {
+      "id": "player.character",
+      "file": "player-character.svg",
+      "metadataFile": "player-character.frames.json",
+      "anchor": "bottom-center",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 80,
+      "columns": 6,
+      "rows": 20,
+      "totalFrames": 120,
+      "usedFrames": 104,
+      "directions": [
+        "down",
+        "left",
+        "right",
+        "up"
+      ],
+      "animations": {
+        "idle": {
+          "rowStart": 0,
+          "directionRows": {
+            "down": 0,
+            "left": 1,
+            "right": 2,
+            "up": 3
+          },
+          "framesPerDirection": 4,
+          "frameDurationMs": 280,
+          "loop": true,
+          "impactFrameIndex": null
+        },
+        "walk": {
+          "rowStart": 4,
+          "directionRows": {
+            "down": 4,
+            "left": 5,
+            "right": 6,
+            "up": 7
+          },
+          "framesPerDirection": 6,
+          "frameDurationMs": 110,
+          "loop": true,
+          "impactFrameIndex": null
+        },
+        "hoe": {
+          "rowStart": 8,
+          "directionRows": {
+            "down": 8,
+            "left": 9,
+            "right": 10,
+            "up": 11
+          },
+          "framesPerDirection": 5,
+          "frameDurationMs": 90,
+          "loop": false,
+          "impactFrameIndex": 2
+        },
+        "water": {
+          "rowStart": 12,
+          "directionRows": {
+            "down": 12,
+            "left": 13,
+            "right": 14,
+            "up": 15
+          },
+          "framesPerDirection": 6,
+          "frameDurationMs": 90,
+          "loop": false,
+          "impactFrameIndex": 3
+        },
+        "harvest": {
+          "rowStart": 16,
+          "directionRows": {
+            "down": 16,
+            "left": 17,
+            "right": 18,
+            "up": 19
+          },
+          "framesPerDirection": 5,
+          "frameDurationMs": 85,
+          "loop": false,
+          "impactFrameIndex": 2
+        }
+      }
+    }
+  ]
+}

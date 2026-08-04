@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "textureId": "environment.water",
+  "sourceFile": "environment-water.svg",
+  "kind": "environment-variant-sheet",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 4,
+  "rows": 1,
+  "totalFrames": 4,
+  "usedFrames": 4,
+  "frames": [
+    {
+      "stableFrameKey": "environment.water.00",
+      "variant": "ripple-00",
+      "index": 0,
+      "column": 0,
+      "row": 0,
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      },
+      "occupancy": 0.41
+    },
+    {
+      "stableFrameKey": "environment.water.01",
+      "variant": "ripple-01",
+      "index": 1,
+      "column": 1,
+      "row": 0,
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      },
+      "occupancy": 0.43
+    },
+    {
+      "stableFrameKey": "environment.water.02",
+      "variant": "ripple-02",
+      "index": 2,
+      "column": 2,
+      "row": 0,
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      },
+      "occupancy": 0.42
+    },
+    {
+      "stableFrameKey": "environment.water.03",
+      "variant": "ripple-03",
+      "index": 3,
+      "column": 3,
+      "row": 0,
+      "x": 192,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      },
+      "occupancy": 0.44
+    }
+  ]
+}

@@ -111,11 +111,14 @@ anticipation
 - validate source dimensions, origin, foot anchor, collision footprint and player-group byte budget;
 - keep production preload/runtime textures unchanged until Slice D, avoiding a half-integrated character pipeline.
 
-### Slice C — environment and crop polish
+### Slice C — environment and crop source pack
 
-- add grass/water/wood tileset pieces;
-- refine soil and crop silhouettes without changing stable content IDs;
-- validate transparent padding and stage silhouette deltas.
+- generate four stable variants/frames for grass, water and wood source sheets;
+- emit explicit `.frames.json` metadata for all environment variants and crop stages;
+- strengthen turnip, carrot and strawberry stage silhouettes without changing stable content IDs;
+- annotate SVG frames with stable keys, bounds and occupancy evidence;
+- validate adjacent crop-stage growth against the required silhouette-difference ratio;
+- keep runtime preload/map composition unchanged until Slice D.
 
 ### Slice D — production integration
 
@@ -129,9 +132,9 @@ anticipation
 
 ## Current completion boundary
 
-Slices A and B establish the contract and a deterministic generated source pack. The generated character is pipeline/placeholder artwork, not approved final production art. The runtime player textures remain unchanged until Slice D registers the complete sheet, connects animation state and impact timing, and passes desktop/mobile visual evidence.
+Slices A, B and C establish the contract plus deterministic player, environment and crop source packs. These generated assets are pipeline-ready artwork, not approved final production art. The runtime player textures and world composition remain unchanged until Slice D registers the complete sheets, connects animation state and impact timing, and passes desktop/mobile visual evidence.
 
-Slice C remains responsible for environment and crop polish. Real visual acceptance must compare silhouettes, held-tool handedness, anchors and Y-sort in the running game rather than treating source generation alone as completion.
+Real visual acceptance must compare crop readability, environment tiling, held-tool handedness, anchors and Y-sort in the running game rather than treating source generation alone as completion.
 
 ## Slice B generated artifacts
 
@@ -150,3 +153,24 @@ player.hoe.left.03
 ```
 
 `npm run validate:player-pack` cross-checks the source contract, manifest, SVG dimensions and every generated frame record. `npm run validate:assets` also counts the frame metadata against the global visual budget. Re-running generation must leave these tracked outputs byte-for-byte unchanged.
+
+
+## Slice C generated artifacts
+
+`npm run generate:assets` additionally emits:
+
+```text
+public/assets/generated/environment-grass.svg
+public/assets/generated/environment-grass.frames.json
+public/assets/generated/environment-water.svg
+public/assets/generated/environment-water.frames.json
+public/assets/generated/environment-wood.svg
+public/assets/generated/environment-wood.frames.json
+public/assets/generated/crop-turnip.frames.json
+public/assets/generated/crop-carrot.frames.json
+public/assets/generated/crop-strawberry.frames.json
+```
+
+Each sheet exposes four stable keys. Environment metadata names the tile/animation variant; crop metadata records the stage, local silhouette bounds and normalized occupancy. The SVG frame groups repeat the same keys, bounds and occupancy annotations so `npm run validate:environment-crop-pack` can reject metadata/source drift.
+
+Adjacent crop stages must exceed `qualityRules.requiredSilhouetteDifferenceRatio` and grow in width or height. The validator also checks the farm-world and crop group budgets independently before the global visual budget runs. Production preload and `FarmScene` remain untouched; visual composition belongs to Slice D.

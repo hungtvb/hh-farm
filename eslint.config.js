@@ -38,6 +38,7 @@ export default tseslint.config(
       'scripts/generate-visual-assets.mjs',
       'scripts/validate-art-pack-contract.mjs',
       'scripts/validate-player-source-pack.mjs',
+      'scripts/validate-environment-crop-source-pack.mjs',
       'scripts/validate-visual-assets.mjs',
     ],
     extends: [tseslint.configs.disableTypeChecked],

@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "textureId": "crop.turnip.stages",
+  "sourceFile": "crop-turnip.svg",
+  "kind": "crop-stage-sheet",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 4,
+  "rows": 1,
+  "totalFrames": 4,
+  "usedFrames": 4,
+  "frames": [
+    {
+      "stableFrameKey": "crop.turnip.stage.00",
+      "stage": 0,
+      "index": 0,
+      "column": 0,
+      "row": 0,
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 25,
+        "y": 25,
+        "width": 14,
+        "height": 27
+      },
+      "occupancy": 0.105
+    },
+    {
+      "stableFrameKey": "crop.turnip.stage.01",
+      "stage": 1,
+      "index": 1,
+      "column": 1,
+      "row": 0,
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 20,
+        "y": 18,
+        "width": 24,
+        "height": 36
+      },
+      "occupancy": 0.185
+    },
+    {
+      "stableFrameKey": "crop.turnip.stage.02",
+      "stage": 2,
+      "index": 2,
+      "column": 2,
+      "row": 0,
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 16,
+        "y": 12,
+        "width": 32,
+        "height": 44
+      },
+      "occupancy": 0.305
+    },
+    {
+      "stableFrameKey": "crop.turnip.stage.03",
+      "stage": 3,
+      "index": 3,
+      "column": 3,
+      "row": 0,
+      "x": 192,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "bounds": {
+        "x": 11,
+        "y": 7,
+        "width": 42,
+        "height": 52
+      },
+      "occupancy": 0.475
+    }
+  ]
+}

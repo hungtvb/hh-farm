@@ -51,17 +51,80 @@
     {
       "id": "crop.turnip.stages",
       "file": "crop-turnip.svg",
-      "anchor": "bottom-center"
+      "anchor": "bottom-center",
+      "metadataFile": "crop-turnip.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
     },
     {
       "id": "crop.carrot.stages",
       "file": "crop-carrot.svg",
-      "anchor": "bottom-center"
+      "anchor": "bottom-center",
+      "metadataFile": "crop-carrot.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
     },
     {
       "id": "crop.strawberry.stages",
       "file": "crop-strawberry.svg",
-      "anchor": "bottom-center"
+      "anchor": "bottom-center",
+      "metadataFile": "crop-strawberry.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.grass",
+      "file": "environment-grass.svg",
+      "anchor": "center",
+      "metadataFile": "environment-grass.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.water",
+      "file": "environment-water.svg",
+      "anchor": "center",
+      "metadataFile": "environment-water.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
+    },
+    {
+      "id": "environment.wood",
+      "file": "environment-wood.svg",
+      "anchor": "center",
+      "metadataFile": "environment-wood.frames.json",
+      "type": "sprite-sheet",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 1,
+      "totalFrames": 4,
+      "usedFrames": 4
     },
     {
       "id": "world.bed",
